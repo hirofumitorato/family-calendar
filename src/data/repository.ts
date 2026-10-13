@@ -1,6 +1,7 @@
 import type {
   Calendar,
   CalendarEvent,
+  DayColor,
   DaySticker,
   Family,
   FamilyMember,
@@ -45,6 +46,11 @@ export interface CalendarRepository {
   listStickers(calendarIds: string[], fromKey: string, toKey: string): Promise<DaySticker[]>;
   addSticker(calendarId: string, date: string, sticker: string): Promise<void>;
   removeSticker(id: string): Promise<void>;
+
+  /** 日付セルの背景色。fromKey〜toKey（両端含む） */
+  listDayColors(calendarIds: string[], fromKey: string, toKey: string): Promise<DayColor[]>;
+  /** color = null で解除 */
+  setDayColor(calendarId: string, date: string, color: string | null): Promise<void>;
 
   listWeather(familyId: string, fromKey: string, toKey: string): Promise<WeatherDaily[]>;
 

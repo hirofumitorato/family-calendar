@@ -1,9 +1,11 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, Text, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { AppProvider, useApp } from '@/state/app-store';
+import { ThemePreferenceProvider, useThemePreference } from '@/state/theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,13 +49,22 @@ function RootStack() {
   );
 }
 
-export default function RootLayout() {
-  const scheme = useColorScheme();
+function ThemedRoot() {
+  const { scheme } = useThemePreference();
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <AppProvider>
         <RootStack />
       </AppProvider>
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemePreferenceProvider>
+      <ThemedRoot />
+    </ThemePreferenceProvider>
   );
 }

@@ -1,6 +1,6 @@
 import type { CalendarRepository, FamilyContext } from '@/data/repository';
 import { addDays, startOfDay, toDateKey } from '@/lib/date';
-import type { CalendarEvent, DaySticker, NewCalendarEvent, WeatherDaily } from '@/lib/types';
+import type { CalendarEvent, DayColor, DaySticker, NewCalendarEvent, WeatherDaily } from '@/lib/types';
 
 // Supabase 未設定でも画面を確認できるよう、端末メモリ上で動くデモ実装。
 // アプリを再起動するとデータは初期状態に戻る。
@@ -69,6 +69,7 @@ export function createDemoRepository(): CalendarRepository {
     { id: 's1', calendar_id: MY_CAL, date: toDateKey(new Date()), sticker: '😊' },
     { id: 's2', calendar_id: FAMILY_CAL, date: toDateKey(addDays(new Date(), 5)), sticker: '⭐' },
   ];
+  let dayColors: DayColor[] = [];
   let seq = 100;
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((l) => l());
@@ -142,6 +143,17 @@ export function createDemoRepository(): CalendarRepository {
     },
     async removeSticker(id) {
       stickers = stickers.filter((s) => s.id !== id);
+      notify();
+    },
+
+    async listDayColors(calendarIds, fromKey, toKey) {
+      return dayColors.filter(
+        (c) => calendarIds.includes(c.calendar_id) && c.date >= fromKey && c.date <= toKey,
+      );
+    },
+    async setDayColor(calendarId, date, color) {
+      dayColors = dayColors.filter((c) => !(c.calendar_id === calendarId && c.date === date));
+      if (color) dayColors = [...dayColors, { calendar_id: calendarId, date, color }];
       notify();
     },
 

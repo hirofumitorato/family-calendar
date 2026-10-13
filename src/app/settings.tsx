@@ -1,7 +1,9 @@
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useApp } from '@/state/app-store';
+import { useThemePreference } from '@/state/theme';
+import { confirm } from '@/utils/dialog';
 
 // 天気予報の地点。まずは主要都市から選ぶ形にし、後で expo-location による現在地取得を追加する。
 const LOCATIONS = [
@@ -19,7 +21,9 @@ const LOCATIONS = [
 export default function SettingsScreen() {
   const t = useTheme();
   const { repo, ctx, reload } = useApp();
+  const { preference, setPreference, scheme } = useThemePreference();
   if (!ctx) return null;
+  const followSystem = preference === 'system';
 
   const section = [styles.section, { backgroundColor: t.backgroundElement }];
   const title = [styles.sectionTitle, { color: t.textSecondary }];
@@ -33,6 +37,28 @@ export default function SettingsScreen() {
           </Text>
         </View>
       )}
+
+      <Text style={title}>表示</Text>
+      <View style={section}>
+        <View style={styles.switchRow}>
+          <Text style={{ color: t.text, flex: 1 }}>端末の設定に合わせる</Text>
+          <Switch
+            value={followSystem}
+            onValueChange={(v) => setPreference(v ? 'system' : scheme)}
+            accessibilityLabel="端末の設定に合わせる"
+          />
+        </View>
+        <View style={[styles.divider, { backgroundColor: t.border }]} />
+        <View style={[styles.switchRow, followSystem && { opacity: 0.4 }]}>
+          <Text style={{ color: t.text, flex: 1 }}>ダークモード</Text>
+          <Switch
+            value={scheme === 'dark'}
+            disabled={followSystem}
+            onValueChange={(v) => setPreference(v ? 'dark' : 'light')}
+            accessibilityLabel="ダークモード"
+          />
+        </View>
+      </View>
 
       <Text style={title}>家族</Text>
       <View style={section}>
@@ -57,6 +83,11 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={title}>天気予報の地点（現在：{ctx.family.location_name ?? '未設定'}）</Text>
+      {repo.mode === 'demo' && (
+        <Text style={[styles.note, { color: t.textSecondary }]}>
+          デモモードの天気はサンプルデータです。Supabase 接続後は Open-Meteo の実際の予報が表示されます。
+        </Text>
+      )}
       <View style={[section, styles.chips]}>
         {LOCATIONS.map((l) => {
           const active = l.name === ctx.family.location_name;
@@ -77,12 +108,11 @@ export default function SettingsScreen() {
       {repo.mode === 'supabase' && (
         <Pressable
           style={[section, { alignItems: 'center' }]}
-          onPress={() =>
-            Alert.alert('ログアウトしますか？', undefined, [
-              { text: 'キャンセル', style: 'cancel' },
-              { text: 'ログアウト', style: 'destructive', onPress: () => repo.signOut() },
-            ])
-          }>
+          onPress={async () => {
+            if (await confirm('ログアウトしますか？', { okText: 'ログアウト', destructive: true })) {
+              await repo.signOut();
+            }
+          }}>
           <Text style={{ color: t.sunday }}>ログアウト</Text>
         </Pressable>
       )}
@@ -94,6 +124,9 @@ const styles = StyleSheet.create({
   root: { padding: 16, gap: 8, paddingBottom: 48 },
   section: { borderRadius: 12, padding: 14 },
   sectionTitle: { fontSize: 12, marginTop: 12 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', minHeight: 36 },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: 8 },
+  note: { fontSize: 11 },
   big: { fontSize: 18, fontWeight: '700' },
   member: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   dot: { width: 12, height: 12, borderRadius: 6 },

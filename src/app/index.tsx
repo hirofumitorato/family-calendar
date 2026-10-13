@@ -6,18 +6,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DayDetail } from '@/components/day-detail';
 import { MonthGrid } from '@/components/month-grid';
 import { StickerPicker } from '@/components/sticker-picker';
-import { ViewModeToggle } from '@/components/view-mode-toggle';
+import { DayColorPicker } from '@/components/day-color-picker';
 import { DAY_STICKER_GROUPS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
-import { addMonths, startOfDay, toDateKey } from '@/lib/date';
+import { addMonths, formatDayLabel, startOfDay, toDateKey } from '@/lib/date';
 import { useApp, useMonthData } from '@/state/app-store';
 
 export default function CalendarScreen() {
   const t = useTheme();
-  const { repo, viewMode, setViewMode, defaultCalendar, bumpRevision } = useApp();
+  const { repo, defaultCalendar, bumpRevision } = useApp();
   const [cursor, setCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selected, setSelected] = useState(() => startOfDay(new Date()));
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [colorTarget, setColorTarget] = useState<Date | null>(null);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -34,6 +35,14 @@ export default function CalendarScreen() {
     setPickerOpen(false);
     if (!value || !defaultCalendar) return;
     await repo.addSticker(defaultCalendar.id, toDateKey(selected), value);
+    bumpRevision();
+  };
+
+  const setDayColor = async (color: string | null) => {
+    const target = colorTarget;
+    setColorTarget(null);
+    if (!target || !defaultCalendar) return;
+    await repo.setDayColor(defaultCalendar.id, toDateKey(target), color);
     bumpRevision();
   };
 
@@ -60,10 +69,6 @@ export default function CalendarScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.toggle}>
-        <ViewModeToggle value={viewMode} onChange={setViewMode} />
-      </View>
-
       <ScrollView>
         <MonthGrid
           year={year}
@@ -73,12 +78,20 @@ export default function CalendarScreen() {
             setSelected(d);
             if (d.getMonth() !== month) setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
           }}
+          onLongPress={(d) => {
+            setSelected(d);
+            setColorTarget(d);
+          }}
           data={data}
         />
         <DayDetail
           date={selected}
           data={data}
           onPressEvent={(o) => router.push({ pathname: '/event/[id]', params: { id: o.event.id } })}
+          onDeleteEvent={async (o) => {
+            await repo.deleteEvent(o.event.id);
+            bumpRevision();
+          }}
           onAddSticker={() => setPickerOpen(true)}
           onRemoveSticker={async (s) => {
             await repo.removeSticker(s.id);
@@ -94,6 +107,14 @@ export default function CalendarScreen() {
         style={[styles.fab, { backgroundColor: t.accent }]}>
         <Text style={styles.fabText}>＋</Text>
       </Pressable>
+
+      <DayColorPicker
+        visible={colorTarget !== null}
+        title={colorTarget ? `${formatDayLabel(colorTarget)} のマスの色` : ''}
+        current={colorTarget ? data.colorByDay.get(toDateKey(colorTarget)) ?? null : null}
+        onSelect={setDayColor}
+        onClose={() => setColorTarget(null)}
+      />
 
       <StickerPicker
         visible={pickerOpen}
@@ -113,7 +134,6 @@ const styles = StyleSheet.create({
   month: { fontSize: 20, fontWeight: '700' },
   pill: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 4 },
   gear: { fontSize: 20 },
-  toggle: { paddingHorizontal: 16, paddingBottom: 8 },
   fab: {
     position: 'absolute',
     right: 20,

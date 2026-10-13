@@ -2,9 +2,6 @@
 
 export type Visibility = 'personal' | 'family';
 
-/** 画面上部の表示切り替え：自分の予定 / 家族の予定 / すべて */
-export type ViewMode = 'mine' | 'family' | 'all';
-
 export type Family = {
   id: string;
   name: string;
@@ -52,6 +49,12 @@ export type DaySticker = {
   calendar_id: string;
   date: string; // YYYY-MM-DD
   sticker: string;
+};
+
+export type DayColor = {
+  calendar_id: string;
+  date: string; // YYYY-MM-DD
+  color: string;
 };
 
 export type WeatherDaily = {

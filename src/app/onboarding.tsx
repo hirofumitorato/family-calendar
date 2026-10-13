@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useApp } from '@/state/app-store';
+import { notify } from '@/utils/dialog';
 
 /** 家族を新しく作る or 招待コードで参加する */
 export default function OnboardingScreen() {
@@ -14,13 +15,13 @@ export default function OnboardingScreen() {
   const [busy, setBusy] = useState(false);
 
   const run = async (fn: () => Promise<void>) => {
-    if (!displayName.trim()) return Alert.alert('あなたの表示名を入力してください');
+    if (!displayName.trim()) return notify('あなたの表示名を入力してください');
     setBusy(true);
     try {
       await fn();
       await reload();
     } catch (e) {
-      Alert.alert('エラー', e instanceof Error ? e.message : String(e));
+      notify('エラー', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }

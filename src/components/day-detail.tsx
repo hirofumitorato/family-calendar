@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabel, formatTime, isSameDay, toDateKey } from '@/lib/date';
@@ -6,17 +6,20 @@ import { getHolidayName } from '@/lib/holidays';
 import type { DaySticker, EventOccurrence } from '@/lib/types';
 import { weatherCodeToIcon } from '@/lib/weather';
 import type { MonthData } from '@/state/app-store';
+import { confirm } from '@/utils/dialog';
 
 export function DayDetail({
   date,
   data,
   onPressEvent,
+  onDeleteEvent,
   onAddSticker,
   onRemoveSticker,
 }: {
   date: Date;
   data: MonthData;
   onPressEvent: (o: EventOccurrence) => void;
+  onDeleteEvent: (o: EventOccurrence) => void;
   onAddSticker: () => void;
   onRemoveSticker: (s: DaySticker) => void;
 }) {
@@ -58,12 +61,11 @@ export function DayDetail({
           <Pressable
             key={s.id}
             accessibilityLabel={`スタンプ ${s.sticker} を外す`}
-            onLongPress={() =>
-              Alert.alert('スタンプを外しますか？', s.sticker, [
-                { text: 'キャンセル', style: 'cancel' },
-                { text: '外す', style: 'destructive', onPress: () => onRemoveSticker(s) },
-              ])
-            }>
+            onPress={async () => {
+              if (await confirm(`スタンプ ${s.sticker} を外しますか？`, { okText: '外す', destructive: true })) {
+                onRemoveSticker(s);
+              }
+            }}>
             <Text style={styles.sticker}>{s.sticker}</Text>
           </Pressable>
         ))}
@@ -74,6 +76,8 @@ export function DayDetail({
           <Text style={{ color: t.textSecondary, fontSize: 12 }}>＋スタンプ</Text>
         </Pressable>
       </View>
+
+      <Text style={[styles.hint, { color: t.textMuted }]}>日付マスを長押しすると、マスの色を変えられます</Text>
 
       {occs.length === 0 ? (
         <Text style={[styles.empty, { color: t.textMuted }]}>予定はありません</Text>
@@ -95,6 +99,20 @@ export function DayDetail({
             <Text style={[styles.calName, { color: t.textSecondary }]}>
               {o.calendar.visibility === 'personal' ? '🔒' : '👪'}
             </Text>
+            <Pressable
+              hitSlop={8}
+              accessibilityLabel={`${o.event.title} を削除`}
+              onPress={async () => {
+                const ok = await confirm(`「${o.event.title}」を削除しますか？`, {
+                  message: o.event.rrule ? '繰り返し予定はすべての回が削除されます' : undefined,
+                  okText: '削除',
+                  destructive: true,
+                });
+                if (ok) onDeleteEvent(o);
+              }}
+              style={styles.deleteButton}>
+              <Text style={{ color: t.sunday, fontSize: 13 }}>削除</Text>
+            </Pressable>
           </Pressable>
         ))
       )}
@@ -118,5 +136,7 @@ const styles = StyleSheet.create({
   colorBar: { width: 4, alignSelf: 'stretch' },
   eventTime: { width: 92, fontSize: 12, paddingLeft: 10 },
   eventTitle: { flex: 1, fontSize: 15 },
-  calName: { paddingHorizontal: 10, fontSize: 12 },
+  calName: { paddingHorizontal: 6, fontSize: 12 },
+  deleteButton: { paddingHorizontal: 12, alignSelf: 'stretch', justifyContent: 'center' },
+  hint: { fontSize: 11 },
 });

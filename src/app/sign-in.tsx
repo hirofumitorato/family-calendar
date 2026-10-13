@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
+import { notify } from '@/utils/dialog';
 
 export default function SignInScreen() {
   const t = useTheme();
@@ -18,8 +19,8 @@ export default function SignInScreen() {
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password });
     setBusy(false);
-    if (error) Alert.alert('エラー', error.message);
-    else if (mode === 'signUp') Alert.alert('確認メールを送りました', 'メール内のリンクを開いてからログインしてください');
+    if (error) notify('エラー', error.message);
+    else if (mode === 'signUp') notify('確認メールを送りました', 'メール内のリンクを開いてからログインしてください');
   };
 
   const input = [styles.input, { color: t.text, backgroundColor: t.backgroundElement }];

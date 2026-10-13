@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import { EVENT_ICON_GROUPS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
 import { formatTime, parseDateKey, parseTime, toDateKey } from '@/lib/date';
 import type { Calendar, CalendarEvent, NewCalendarEvent } from '@/lib/types';
+import { confirm, notify } from '@/utils/dialog';
 
 const REPEATS = [
   { label: 'なし', value: null },
@@ -70,9 +70,9 @@ export function EventForm({
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!title.trim()) return Alert.alert('タイトルを入力してください');
+    if (!title.trim()) return notify('タイトルを入力してください');
     if (!DATE_RE.test(startDate) || !DATE_RE.test(endDate)) {
-      return Alert.alert('日付は YYYY-MM-DD の形式で入力してください');
+      return notify('日付は YYYY-MM-DD の形式で入力してください');
     }
     const s = parseDateKey(startDate);
     const e = parseDateKey(endDate);
@@ -81,12 +81,12 @@ export function EventForm({
     } else {
       const st = parseTime(startTime);
       const et = parseTime(endTime);
-      if (!st || !et) return Alert.alert('時刻は HH:mm の形式で入力してください');
+      if (!st || !et) return notify('時刻は HH:mm の形式で入力してください');
       s.setHours(st.h, st.m, 0, 0);
       e.setHours(et.h, et.m, 0, 0);
     }
-    if (e < s) return Alert.alert('終了は開始より後にしてください');
-    if (!calendarId) return Alert.alert('カレンダーを選択してください');
+    if (e < s) return notify('終了は開始より後にしてください');
+    if (!calendarId) return notify('カレンダーを選択してください');
 
     setSaving(true);
     try {
@@ -103,7 +103,7 @@ export function EventForm({
         memo: memo.trim() || null,
       });
     } catch (err) {
-      Alert.alert('保存できませんでした', err instanceof Error ? err.message : String(err));
+      notify('保存できませんでした', err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -197,12 +197,14 @@ export function EventForm({
 
         {onDelete && (
           <Pressable
-            onPress={() =>
-              Alert.alert('この予定を削除しますか？', rrule ? '繰り返し予定はすべて削除されます' : undefined, [
-                { text: 'キャンセル', style: 'cancel' },
-                { text: '削除', style: 'destructive', onPress: () => onDelete() },
-              ])
-            }
+            onPress={async () => {
+              const ok = await confirm('この予定を削除しますか？', {
+                message: rrule ? '繰り返し予定はすべての回が削除されます' : undefined,
+                okText: '削除',
+                destructive: true,
+              });
+              if (ok) await onDelete();
+            }}
             style={styles.danger}>
             <Text style={{ color: t.sunday, fontSize: 15 }}>削除</Text>
           </Pressable>

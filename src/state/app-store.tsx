@@ -18,7 +18,6 @@ import type {
   Calendar,
   DaySticker,
   EventOccurrence,
-  ViewMode,
   WeatherDaily,
 } from '@/lib/types';
 
@@ -29,11 +28,9 @@ type AppState = {
   status: Status;
   error: string | null;
   ctx: FamilyContext | null;
-  viewMode: ViewMode;
-  setViewMode: (m: ViewMode) => void;
-  /** 表示モードで絞り込んだカレンダー */
+  /** 表示するカレンダー（家族カレンダー＋自分の個人カレンダーすべて） */
   visibleCalendars: Calendar[];
-  /** 自分が書き込める既定のカレンダー（モードに応じて家族 or 個人） */
+  /** 予定・スタンプ・セル色の既定の保存先（家族カレンダー） */
   defaultCalendar: Calendar | null;
   reload: () => Promise<void>;
   /** 予定・スタンプが変わったときに増える。データ再取得のトリガー */
@@ -51,7 +48,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState<string | null>(null);
   const [ctx, setCtx] = useState<FamilyContext | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [revision, setRevision] = useState(0);
   const bumpRevision = useCallback(() => setRevision((r) => r + 1), []);
 
@@ -83,27 +79,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return repo.subscribe(bumpRevision);
   }, [repo, status, bumpRevision]);
 
-  const visibleCalendars = useMemo(() => {
-    const all = ctx?.calendars ?? [];
-    if (viewMode === 'mine') return all.filter((c) => c.visibility === 'personal');
-    if (viewMode === 'family') return all.filter((c) => c.visibility === 'family');
-    return all;
-  }, [ctx, viewMode]);
+  const visibleCalendars = useMemo(() => ctx?.calendars ?? [], [ctx]);
 
   const defaultCalendar = useMemo(() => {
     const all = ctx?.calendars ?? [];
-    const personal = all.find((c) => c.visibility === 'personal');
-    const family = all.find((c) => c.visibility === 'family');
-    return (viewMode === 'mine' ? personal ?? family : family ?? personal) ?? null;
-  }, [ctx, viewMode]);
+    return all.find((c) => c.visibility === 'family') ?? all[0] ?? null;
+  }, [ctx]);
 
   const value: AppState = {
     repo,
     status,
     error,
     ctx,
-    viewMode,
-    setViewMode,
     visibleCalendars,
     defaultCalendar,
     reload,
@@ -122,6 +109,8 @@ export function useApp(): AppState {
 export type MonthData = {
   occurrencesByDay: Map<string, EventOccurrence[]>;
   stickersByDay: Map<string, DaySticker[]>;
+  /** 日付セルの背景色 */
+  colorByDay: Map<string, string>;
   weatherByDay: Map<string, WeatherDaily>;
   loading: boolean;
 };
@@ -132,6 +121,7 @@ export function useMonthData(year: number, month: number): MonthData {
   const [data, setData] = useState<Omit<MonthData, 'loading'>>({
     occurrencesByDay: new Map(),
     stickersByDay: new Map(),
+    colorByDay: new Map(),
     weatherByDay: new Map(),
   });
   const [loading, setLoading] = useState(true);
@@ -150,8 +140,9 @@ export function useMonthData(year: number, month: number): MonthData {
       repo.listEvents(calendarIds, from, to),
       repo.listStickers(calendarIds, fromKey, toKey),
       repo.listWeather(ctx.family.id, fromKey, toKey),
+      repo.listDayColors(calendarIds, fromKey, toKey),
     ])
-      .then(([events, stickers, weather]) => {
+      .then(([events, stickers, weather, dayColors]) => {
         if (cancelled) return;
 
         const occurrencesByDay = new Map<string, EventOccurrence[]>();
@@ -190,7 +181,13 @@ export function useMonthData(year: number, month: number): MonthData {
         }
 
         const weatherByDay = new Map(weather.map((w) => [w.date, w]));
-        setData({ occurrencesByDay, stickersByDay, weatherByDay });
+        // 家族カレンダーの色を優先（個人カレンダーの色は上書きしない）
+        const colorByDay = new Map<string, string>();
+        for (const c of dayColors) {
+          const isFamily = calendarById.get(c.calendar_id)?.visibility === 'family';
+          if (isFamily || !colorByDay.has(c.date)) colorByDay.set(c.date, c.color);
+        }
+        setData({ occurrencesByDay, stickersByDay, colorByDay, weatherByDay });
       })
       .catch((e) => console.warn('failed to load month data', e))
       .finally(() => !cancelled && setLoading(false));

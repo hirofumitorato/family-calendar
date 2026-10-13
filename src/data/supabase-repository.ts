@@ -4,6 +4,7 @@ import type { CalendarRepository } from '@/data/repository';
 import type {
   Calendar,
   CalendarEvent,
+  DayColor,
   DaySticker,
   Family,
   FamilyMember,
@@ -112,6 +113,33 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
       check(await sb.from('day_stickers').delete().eq('id', id));
     },
 
+    async listDayColors(calendarIds, fromKey, toKey) {
+      if (!calendarIds.length) return [];
+      return check<DayColor[]>(
+        await sb
+          .from('day_colors')
+          .select('calendar_id, date, color')
+          .in('calendar_id', calendarIds)
+          .gte('date', fromKey)
+          .lte('date', toKey),
+      );
+    },
+    async setDayColor(calendarId, date, color) {
+      if (!color) {
+        check(await sb.from('day_colors').delete().eq('calendar_id', calendarId).eq('date', date));
+        return;
+      }
+      const { data: auth } = await sb.auth.getUser();
+      check(
+        await sb
+          .from('day_colors')
+          .upsert(
+            { calendar_id: calendarId, date, color, updated_by: auth.user?.id, updated_at: new Date().toISOString() },
+            { onConflict: 'calendar_id,date' },
+          ),
+      );
+    },
+
     async listWeather(familyId, fromKey, toKey) {
       return check(
         await sb
@@ -129,6 +157,7 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
         .channel('calendar-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'day_stickers' }, onChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'day_colors' }, onChange)
         .subscribe();
       return () => {
         sb.removeChannel(channel);

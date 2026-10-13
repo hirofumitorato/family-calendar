@@ -16,7 +16,7 @@ import { EVENT_ICON_GROUPS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
 import { formatTime, parseDateKey, parseTime, toDateKey } from '@/lib/date';
 import type { Calendar, CalendarEvent, NewCalendarEvent } from '@/lib/types';
-import { confirm, notify } from '@/utils/dialog';
+import { notify } from '@/utils/dialog';
 
 const REPEATS = [
   { label: 'なし', value: null },
@@ -48,7 +48,8 @@ export function EventForm({
   defaultCalendarId?: string;
   defaultDate: string;
   onSubmit: (value: NewCalendarEvent) => Promise<void>;
-  onDelete?: () => Promise<void>;
+  /** 削除ボタン。確認（範囲選択）は呼び出し側で行う */
+  onDelete?: () => void;
 }) {
   const t = useTheme();
   const initStart = initial ? new Date(initial.starts_at) : parseDateKey(defaultDate);
@@ -98,6 +99,7 @@ export function EventForm({
         starts_at: s.toISOString(),
         ends_at: e.toISOString(),
         rrule,
+        exdates: initial?.exdates ?? [],
         remind_minutes_before: remind,
         location: location.trim() || null,
         memo: memo.trim() || null,
@@ -197,14 +199,7 @@ export function EventForm({
 
         {onDelete && (
           <Pressable
-            onPress={async () => {
-              const ok = await confirm('この予定を削除しますか？', {
-                message: rrule ? '繰り返し予定はすべての回が削除されます' : undefined,
-                okText: '削除',
-                destructive: true,
-              });
-              if (ok) await onDelete();
-            }}
+            onPress={onDelete}
             style={styles.danger}>
             <Text style={{ color: t.sunday, fontSize: 15 }}>削除</Text>
           </Pressable>

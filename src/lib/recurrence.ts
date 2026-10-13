@@ -58,9 +58,15 @@ function shift(base: Date, rule: Rule, step: number): Date {
   return d;
 }
 
+/** Date → 'YYYY-MM-DD'（ローカル日付）。lib 内で完結させるため date.ts と同等の実装を持つ */
+function dateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /**
  * 予定を [from, to) の範囲で展開する。rrule が無ければ範囲と重なる場合のみ1件返す。
  * MONTHLY/YEARLY で存在しない日（31日・2/29など）はスキップする（RFC 5545 と同じ挙動）。
+ * exdates（'YYYY-MM-DD'）に含まれる日の回は出さない。COUNT の数え方には影響しない（RFC 5545 の EXDATE と同じ）。
  */
 export function expandOccurrences(
   startsAt: Date,
@@ -68,6 +74,7 @@ export function expandOccurrences(
   rrule: string | null | undefined,
   from: Date,
   to: Date,
+  exdates: readonly string[] = [],
 ): Occurrence[] {
   const duration = endsAt.getTime() - startsAt.getTime();
   const overlaps = (s: Date) => s < to && s.getTime() + duration >= from.getTime();
@@ -82,6 +89,7 @@ export function expandOccurrences(
     if (rule.until && s > rule.until) return false;
     if (rule.count !== undefined && emitted >= rule.count) return false;
     emitted++;
+    if (exdates.includes(dateKey(s))) return true;
     if (overlaps(s)) result.push({ start: s, end: new Date(s.getTime() + duration) });
     return true;
   };
@@ -118,4 +126,27 @@ export function expandOccurrences(
   }
 
   return result;
+}
+
+/**
+ * 「以降の予定を削除」用：occurrenceDate の前日までで繰り返しを打ち切った RRULE を返す。
+ * COUNT は UNTIL と併用できないため取り除く。
+ * occurrenceDate が最初の回以前なら null（＝予定ごと削除すべき）を返す。
+ */
+export function truncateRRuleBefore(
+  rrule: string,
+  startsAt: Date,
+  occurrenceDate: Date,
+): string | null {
+  const firstDay = new Date(startsAt.getFullYear(), startsAt.getMonth(), startsAt.getDate());
+  const occDay = new Date(occurrenceDate.getFullYear(), occurrenceDate.getMonth(), occurrenceDate.getDate());
+  if (occDay <= firstDay) return null;
+
+  const prev = new Date(occDay.getFullYear(), occDay.getMonth(), occDay.getDate() - 1);
+  const until = dateKey(prev).replace(/-/g, '');
+  const parts = rrule
+    .replace(/^RRULE:/, '')
+    .split(';')
+    .filter((p) => p && !p.startsWith('UNTIL=') && !p.startsWith('COUNT='));
+  return [...parts, `UNTIL=${until}`].join(';');
 }

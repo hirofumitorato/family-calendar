@@ -102,14 +102,7 @@ export function DayDetail({
             <Pressable
               hitSlop={8}
               accessibilityLabel={`${o.event.title} を削除`}
-              onPress={async () => {
-                const ok = await confirm(`「${o.event.title}」を削除しますか？`, {
-                  message: o.event.rrule ? '繰り返し予定はすべての回が削除されます' : undefined,
-                  okText: '削除',
-                  destructive: true,
-                });
-                if (ok) onDeleteEvent(o);
-              }}
+              onPress={() => onDeleteEvent(o)}
               style={styles.deleteButton}>
               <Text style={{ color: t.sunday, fontSize: 13 }}>削除</Text>
             </Pressable>

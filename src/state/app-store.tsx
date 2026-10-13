@@ -155,6 +155,7 @@ export function useMonthData(year: number, month: number): MonthData {
             event.rrule,
             from,
             to,
+            event.exdates ?? [],
           );
           for (const { start, end } of occs) {
             // 複数日にまたがる予定は各日に表示

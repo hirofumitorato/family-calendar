@@ -35,6 +35,7 @@ function seedEvents(): CalendarEvent[] {
     ends_at: end.toISOString(),
     all_day: false,
     rrule: null,
+    exdates: [],
     icon: null,
     remind_minutes_before: [],
     ...extra,

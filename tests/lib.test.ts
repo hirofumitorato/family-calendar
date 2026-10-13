@@ -4,7 +4,7 @@ import { test } from 'node:test';
 
 import { buildMonthGrid, toDateKey } from '../src/lib/date.ts';
 import { getJapaneseHolidays } from '../src/lib/holidays.ts';
-import { expandOccurrences } from '../src/lib/recurrence.ts';
+import { expandOccurrences, truncateRRuleBefore } from '../src/lib/recurrence.ts';
 import { weatherCodeToIcon } from '../src/lib/weather.ts';
 
 test('月グリッドは日曜始まりの42日', () => {
@@ -76,6 +76,28 @@ test('毎年の誕生日は過去開始でも表示範囲に出る', () => {
   const e = new Date('1950-10-16T23:59:00');
   const occ = expandOccurrences(s, e, 'FREQ=YEARLY', ...range('2026-10-01', '2026-11-01'));
   assert.deepEqual(occ.map((o) => toDateKey(o.start)), ['2026-10-16']);
+});
+
+test('この予定のみ削除（exdates）', () => {
+  const s = new Date('2026-10-01T09:00:00');
+  const e = new Date('2026-10-01T10:00:00');
+  const occ = expandOccurrences(s, e, 'FREQ=DAILY;COUNT=5', ...range('2026-10-01', '2026-11-01'), ['2026-10-03']);
+  // COUNT=5 は除外前の回数なので、残るのは4回
+  assert.deepEqual(
+    occ.map((o) => toDateKey(o.start)),
+    ['2026-10-01', '2026-10-02', '2026-10-04', '2026-10-05'],
+  );
+});
+
+test('以降の予定を削除（UNTIL で打ち切り）', () => {
+  const s = new Date('2026-10-01T08:00:00'); // 木
+  const e = new Date('2026-10-01T08:30:00');
+  const rule = truncateRRuleBefore('FREQ=WEEKLY;BYDAY=MO,TH;COUNT=20', s, new Date('2026-10-12T08:00:00'));
+  assert.equal(rule, 'FREQ=WEEKLY;BYDAY=MO,TH;UNTIL=20261011');
+  const occ = expandOccurrences(s, e, rule, ...range('2026-10-01', '2026-11-01'));
+  assert.deepEqual(occ.map((o) => toDateKey(o.start)), ['2026-10-01', '2026-10-05', '2026-10-08']);
+  // 最初の回を指定したら予定ごと削除
+  assert.equal(truncateRRuleBefore('FREQ=DAILY', s, new Date('2026-10-01T08:00:00')), null);
 });
 
 test('天気コード → アイコン', () => {

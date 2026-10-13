@@ -38,6 +38,8 @@ export type CalendarEvent = {
   ends_at: string;
   all_day: boolean;
   rrule: string | null;
+  /** 繰り返しのうち削除した回の日付（'YYYY-MM-DD'） */
+  exdates: string[];
   icon: string | null;
   remind_minutes_before: number[];
 };
@@ -73,3 +75,6 @@ export type EventOccurrence = {
   start: Date;
   end: Date;
 };
+
+/** 繰り返し予定の削除範囲 */
+export type DeleteScope = 'this' | 'following' | 'all';

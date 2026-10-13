@@ -7,9 +7,12 @@ import { DayDetail } from '@/components/day-detail';
 import { MonthGrid } from '@/components/month-grid';
 import { StickerPicker } from '@/components/sticker-picker';
 import { DayColorPicker } from '@/components/day-color-picker';
+import { DeleteEventSheet } from '@/components/delete-event-sheet';
+import { deleteEventWithScope } from '@/data/delete-event';
 import { DAY_STICKER_GROUPS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
 import { addMonths, formatDayLabel, startOfDay, toDateKey } from '@/lib/date';
+import type { EventOccurrence } from '@/lib/types';
 import { useApp, useMonthData } from '@/state/app-store';
 
 export default function CalendarScreen() {
@@ -19,6 +22,7 @@ export default function CalendarScreen() {
   const [selected, setSelected] = useState(() => startOfDay(new Date()));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [colorTarget, setColorTarget] = useState<Date | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EventOccurrence | null>(null);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -87,11 +91,13 @@ export default function CalendarScreen() {
         <DayDetail
           date={selected}
           data={data}
-          onPressEvent={(o) => router.push({ pathname: '/event/[id]', params: { id: o.event.id } })}
-          onDeleteEvent={async (o) => {
-            await repo.deleteEvent(o.event.id);
-            bumpRevision();
-          }}
+          onPressEvent={(o) =>
+            router.push({
+              pathname: '/event/[id]',
+              params: { id: o.event.id, occurrence: o.start.toISOString() },
+            })
+          }
+          onDeleteEvent={setDeleteTarget}
           onAddSticker={() => setPickerOpen(true)}
           onRemoveSticker={async (s) => {
             await repo.removeSticker(s.id);
@@ -107,6 +113,18 @@ export default function CalendarScreen() {
         style={[styles.fab, { backgroundColor: t.accent }]}>
         <Text style={styles.fabText}>＋</Text>
       </Pressable>
+
+      <DeleteEventSheet
+        target={deleteTarget && { event: deleteTarget.event, occurrenceStart: deleteTarget.start }}
+        onClose={() => setDeleteTarget(null)}
+        onSelect={async (scope) => {
+          const target = deleteTarget;
+          setDeleteTarget(null);
+          if (!target) return;
+          await deleteEventWithScope(repo, target.event, target.start, scope);
+          bumpRevision();
+        }}
+      />
 
       <DayColorPicker
         visible={colorTarget !== null}

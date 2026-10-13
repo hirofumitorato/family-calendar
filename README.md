@@ -1,56 +1,96 @@
-# Welcome to your Expo app 👋
+# 👪 かぞくカレンダー (family-calendar)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+iPhone / Android 両対応の家族向けカレンダーアプリ。Expo（React Native）＋ Supabase。
 
-## Get started
+- 月表示カレンダー（祝日・振替休日・国民の休日をオフライン計算）
+- 天気予報アイコン ☀️☁️☔️ を日付マスに表示（Open-Meteo）
+- 「自分／家族／すべて」の表示切り替え（個人カレンダーは本人以外に見えない）
+- 予定ごとのアイコン、日付マスに貼れるスタンプ
+- 繰り返し予定（毎日／毎週／毎月／毎年）
+- 家族の端末へリアルタイム同期（Supabase Realtime）
 
-1. Install dependencies
+要件と今後のTODOは [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)。
 
-   ```bash
-   npm install
-   ```
+## まず動かす（デモモード）
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Supabase を設定しなくても、端末内のサンプルデータで画面を確認できます。
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+スマホに **Expo Go** を入れて QR コードを読み取ると実機で動きます（iPhone / Android どちらも可）。
 
-### Other setup steps
+## Supabase に接続する
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+1. Supabase でプロジェクトを作成
+2. マイグレーションを適用
 
-## Learn more
+   ```bash
+   npx supabase link --project-ref <project-ref>
+   npx supabase db push
+   ```
 
-To learn more about developing your project with Expo, look at the following resources:
+3. `.env.example` を `.env` にコピーして URL と anon key を設定
+4. 天気取得の Edge Function をデプロイ
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+   ```bash
+   npx supabase functions deploy fetch-weather --no-verify-jwt
+   ```
 
-## Join the community
+5. pg_cron で1日4回実行（SQL Editor で実行。`<project-ref>` と service_role キーを置き換え）
 
-Join our community of developers creating universal apps.
+   ```sql
+   create extension if not exists pg_cron;
+   create extension if not exists pg_net;
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+   select cron.schedule(
+     'fetch-weather',
+     '5 */6 * * *',
+     $$
+     select net.http_post(
+       url := 'https://<project-ref>.supabase.co/functions/v1/fetch-weather',
+       headers := jsonb_build_object('Authorization', 'Bearer <service_role_key>')
+     );
+     $$
+   );
+   ```
+
+   本番では service_role キーを SQL に直書きせず、Vault（`vault.decrypted_secrets`）から読むのがおすすめです。
+
+## 構成
+
+```
+src/
+  app/                 画面（Expo Router）
+    index.tsx          月カレンダー＋選択日の詳細
+    event/new.tsx      予定の追加
+    event/[id].tsx     予定の編集・削除
+    settings.tsx       家族・招待コード・天気の地点
+    sign-in.tsx        ログイン（Supabase 接続時のみ）
+    onboarding.tsx     家族の作成／招待コードで参加
+  components/          MonthGrid, DayDetail, EventForm, StickerPicker, ViewModeToggle
+  data/                CalendarRepository（demo / supabase の2実装）
+  lib/                 日付・祝日・繰り返し展開・天気コード変換（純粋関数、テストあり）
+  state/app-store.tsx  ログイン状態・表示モード・月データ取得
+supabase/
+  migrations/          スキーマ＋RLS＋RPC（create_family / join_family）
+  functions/fetch-weather/  Open-Meteo → weather_daily
+tests/                 lib のユニットテスト
+```
+
+## コマンド
+
+```bash
+npm test            # lib のユニットテスト（Node 22.6+）
+npm run typecheck   # tsc --noEmit
+npx expo start      # 開発サーバー
+```
+
+## 配布
+
+家族だけで使う場合はストア公開不要です。
+
+- iOS: `npx eas-cli build -p ios` → TestFlight（Apple Developer 登録が必要）
+- Android: `npx eas-cli build -p android` → APK を直接配布 or Google Play 内部テスト

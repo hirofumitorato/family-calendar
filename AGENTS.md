@@ -39,3 +39,12 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## This project (かぞくカレンダー)
+
+- Requirements & TODO: `docs/REQUIREMENTS.md`. UI text is Japanese.
+- Screens only talk to `CalendarRepository` (`src/data/repository.ts`). Any new data operation must be added to the interface AND both implementations (`demo-repository.ts`, `supabase-repository.ts`). The app runs in demo mode when `EXPO_PUBLIC_SUPABASE_*` is unset.
+- Pure logic lives in `src/lib/` with no `@/` imports so `npm test` (node --experimental-strip-types) can run it. Add tests in `tests/` for any change there.
+- DB changes go in a new file under `supabase/migrations/`; keep RLS: `personal` calendars are visible only to `owner_id`, `family` calendars to all family members.
+- Weather: Open-Meteo via `supabase/functions/fetch-weather` → `weather_daily`. The app never calls Open-Meteo directly.
+- Before finishing: `npm run typecheck && npm test`.

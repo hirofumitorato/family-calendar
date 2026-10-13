@@ -1,0 +1,40 @@
+# かぞくカレンダー 要件メモ
+
+iPhone と Android の両方で、家族みんなで使えるカレンダーアプリ。
+
+## 実現したいこと
+
+| # | 機能 | 方針 | 状態 |
+|---|------|------|------|
+| 1 | Yahoo!カレンダーの機能を基本的に踏襲 | 月表示・祝日・予定のCRUD・繰り返し・リマインド・カレンダーごとの色分け | 月表示/祝日/CRUD/繰り返し ✅、週・日表示とリマインド通知は未実装 |
+| 2 | 天気予報をカレンダーに小さく表示（☀️☁️☔️） | Open-Meteo → Edge Function `fetch-weather` → `weather_daily` にキャッシュ → アプリは DB を読む | ✅（地点は設定画面で都市を選択） |
+| 3 | 個人向け表示と家族向け表示を分ける | カレンダーを `personal`（本人のみ, RLS）と `family` に分け、画面上部で「自分／家族／すべて」を切り替え | ✅ |
+| 4 | 好きなスタンプやアイコンを表示 | 予定ごとのアイコン＋日付マスに貼るスタンプ。まずは絵文字、後で画像（Storage）に拡張 | ✅（絵文字） |
+
+## 天気予報の取得元（検討メモ）
+
+- **Open-Meteo（採用）**: APIキー不要。緯度経度で日別 `weather_code` / 最高・最低気温 / 降水確率が取れる。
+  無料枠は非商用向け。販売・商用化する場合は有料プランに切り替え（`OPEN_METEO_API_KEY` を設定するだけで切替可能にしてある）。
+- 気象庁の JSON（非公式）: 公式データだが地域コード単位・仕様変更リスクあり。将来の比較候補。
+- 予報は約2週間先まで。それ以降の日付はアイコンを出さない。
+
+## データモデル
+
+`supabase/migrations/20261013000000_init.sql` を参照。
+
+- `families`（天気の地点もここ）／`family_members`（表示名・色）
+- `calendars`（`visibility`: personal / family）
+- `events`（`icon`, `rrule`, `remind_minutes_before`）
+- `day_stickers`（日付スタンプ）
+- `weather_daily`（天気キャッシュ。書き込みは service_role のみ）
+
+## 今後のTODO（優先順）
+
+1. リマインド通知（expo-notifications + Expo Push。Supabase cron で送信）
+2. 週表示・日表示、月表示のスワイプ切替
+3. 日付・時刻入力をネイティブのピッカーに（@react-native-community/datetimepicker）
+4. 天気地点を現在地から設定（expo-location）、メンバー個人ごとの地点
+5. 画像スタンプ（Supabase Storage、`sticker = 'img:<path>'`）
+6. 繰り返し予定の「この回だけ変更／削除」（例外日テーブル）
+7. 六曜表示（任意）
+8. Google カレンダー取り込み（任意）

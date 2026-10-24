@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { KaiunSheet } from '@/components/kaiun-sheet';
 import { PeopleSheet } from '@/components/people-sheet';
 import { useTheme } from '@/hooks/use-theme';
 import { useApp } from '@/state/app-store';
+import { useCalendarPrefs } from '@/state/calendar-prefs';
 import { useThemePreference } from '@/state/theme';
 import { confirm } from '@/utils/dialog';
 
@@ -25,7 +27,10 @@ export default function SettingsScreen() {
   const { repo, ctx, reload } = useApp();
   const { preference, setPreference, scheme } = useThemePreference();
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [kaiunOpen, setKaiunOpen] = useState(false);
+  const prefs = useCalendarPrefs();
   if (!ctx) return null;
+  const kaiunPerson = prefs.kaiun ? ctx.people.find((p) => p.id === prefs.kaiun?.personId) : null;
   const followSystem = preference === 'system';
 
   const section = [styles.section, { backgroundColor: t.backgroundElement }];
@@ -61,6 +66,37 @@ export default function SettingsScreen() {
             accessibilityLabel="ダークモード"
           />
         </View>
+      </View>
+
+      <Text style={title}>表示するカレンダー</Text>
+      <View style={section}>
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: t.text }}>六曜</Text>
+            <Text style={[styles.note, { color: t.textSecondary }]}>日付の横に大安・仏滅などを表示</Text>
+          </View>
+          <Switch
+            value={prefs.rokuyo}
+            onValueChange={(v) => prefs.update({ rokuyo: v })}
+            accessibilityLabel="六曜カレンダー"
+          />
+        </View>
+        <View style={[styles.divider, { backgroundColor: t.border }]} />
+        <Pressable
+          onPress={() => setKaiunOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`開運カレンダー ${prefs.kaiun ? 'オン' : 'オフ'}`}
+          style={styles.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: t.text }}>🧭 開運カレンダー</Text>
+            <Text style={[styles.note, { color: t.textSecondary }]}>
+              {prefs.kaiun
+                ? `オン：${kaiunPerson?.name ?? ''}（${prefs.kaiun.birthDate.replace(/-/g, '/')} 生まれ）`
+                : 'オフ：九星気学で大開運日と毎日の最大吉方を表示'}
+            </Text>
+          </View>
+          <Text style={{ color: t.accent, fontWeight: '600' }}>{prefs.kaiun ? '変更 ›' : '設定 ›'}</Text>
+        </Pressable>
       </View>
 
       <Text style={title}>家族</Text>
@@ -123,6 +159,7 @@ export default function SettingsScreen() {
         </Pressable>
       )}
       <PeopleSheet visible={peopleOpen} onClose={() => setPeopleOpen(false)} />
+      <KaiunSheet visible={kaiunOpen} onClose={() => setKaiunOpen(false)} />
     </ScrollView>
   );
 }
@@ -131,7 +168,7 @@ const styles = StyleSheet.create({
   root: { padding: 16, gap: 8, paddingBottom: 48 },
   section: { borderRadius: 12, padding: 14 },
   sectionTitle: { fontSize: 12, marginTop: 12 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', minHeight: 36 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 36 },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 8 },
   note: { fontSize: 11 },
   big: { fontSize: 18, fontWeight: '700' },

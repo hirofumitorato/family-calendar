@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { KaiunSheet } from '@/components/kaiun-sheet';
 import { MemberBadges } from '@/components/member-badge';
 import { MemberStripe } from '@/components/member-stripe';
 import { useTheme } from '@/hooks/use-theme';
@@ -42,7 +40,6 @@ export function DayDetail({
   const occs = data.occurrencesByDay.get(key) ?? [];
   const prefs = useCalendarPrefs();
   const rokuyo = prefs.rokuyo ? getRokuyo(date) : null;
-  const [kaiunOpen, setKaiunOpen] = useState(false);
   const bestDirs = prefs.kaiun
     ? (() => {
         const st = birthStars(parseDateKey(prefs.kaiun.birthDate));
@@ -105,25 +102,6 @@ export function DayDetail({
         </Text>
       )}
 
-      {/* 表示するカレンダー */}
-      <View style={styles.calRow}>
-        <Text style={[styles.calLabel, { color: t.textSecondary }]}>表示するカレンダー</Text>
-        <Pressable
-          accessibilityLabel={`六曜カレンダー ${prefs.rokuyo ? 'オン' : 'オフ'}`}
-          accessibilityState={{ selected: prefs.rokuyo }}
-          onPress={() => prefs.update({ rokuyo: !prefs.rokuyo })}
-          style={[styles.calChip, { borderColor: t.border }, prefs.rokuyo && { backgroundColor: t.accent, borderColor: t.accent }]}>
-          <Text style={{ color: prefs.rokuyo ? '#fff' : t.text, fontSize: 12 }}>{prefs.rokuyo ? '✓ ' : ''}六曜</Text>
-        </Pressable>
-        <Pressable
-          accessibilityLabel={`開運カレンダー ${prefs.kaiun ? 'オン' : 'オフ'}`}
-          accessibilityState={{ selected: Boolean(prefs.kaiun) }}
-          onPress={() => setKaiunOpen(true)}
-          style={[styles.calChip, { borderColor: t.border }, prefs.kaiun && { backgroundColor: t.accent, borderColor: t.accent }]}>
-          <Text style={{ color: prefs.kaiun ? '#fff' : t.text, fontSize: 12 }}>{prefs.kaiun ? '✓ ' : '＋ '}🧭 開運</Text>
-        </Pressable>
-      </View>
-
       {occs.length === 0 ? (
         <Text style={[styles.empty, { color: t.textMuted }]}>予定はありません</Text>
       ) : (
@@ -181,7 +159,6 @@ export function DayDetail({
           );
         })
       )}
-      <KaiunSheet visible={kaiunOpen} onClose={() => setKaiunOpen(false)} />
     </View>
   );
 }
@@ -192,10 +169,7 @@ const styles = StyleSheet.create({
   dayRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   dayLabel: { fontSize: 18, fontWeight: '700' },
   rokuyo: { fontSize: 13, fontWeight: '600' },
-  calRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  calLabel: { fontSize: 12 },
   bestLine: { fontSize: 13 },
-  calChip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
   holiday: { fontSize: 12, marginTop: 2 },
   weather: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   weatherEmoji: { fontSize: 20 },

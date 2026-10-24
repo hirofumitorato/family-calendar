@@ -12,6 +12,7 @@ import {
 
 import { ColorPopover } from '@/components/color-popover';
 import { MemberStripe } from '@/components/member-stripe';
+import { EventGradient, gradientColorsOf } from '@/components/event-gradient';
 import { DateTimeRow, type PickerOpen } from '@/components/date-time-picker';
 import { GenreSheet } from '@/components/genre-sheet';
 import { PeopleSheet } from '@/components/people-sheet';
@@ -155,6 +156,7 @@ export function EventForm(props: Props) {
     setMemberIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   // 選んだ順ではなく、一覧の並び順で持つ（帯の色の順番がいつも同じになるように）
   const orderedMembers = people.filter((p) => memberIds.includes(p.id));
+  const titleGradient = gradientColorsOf(color, orderedMembers.map((p) => p.color));
 
   const startWeekday = DATE_RE.test(startDate) ? parseDateKey(startDate).getDay() : new Date().getDay();
   const weeklyDays = freq === 'WEEKLY' && byDay.length === 0 ? [startWeekday] : byDay;
@@ -342,12 +344,14 @@ export function EventForm(props: Props) {
             style={[styles.iconButton, { backgroundColor: t.backgroundElement }]}>
             <Text style={{ fontSize: 24 }}>{icon ?? '🙂'}</Text>
           </Pressable>
-          {/* タイトル欄はカレンダーでの見え方と同じ色（終日＝濃い色、時間指定＝淡い色） */}
+          {/* タイトル欄はカレンダーでの見え方と同じ色（終日＝濃い色、時間指定＝淡い色）。
+              複数人なら選んだ人の色のグラデーション */}
           <View
             style={[
               styles.titleBox,
-              { backgroundColor: eventLook(shownColor, allDay, t).bg },
+              { backgroundColor: titleGradient.length > 1 ? 'transparent' : eventLook(shownColor, allDay, t).bg },
             ]}>
+            <EventGradient colors={titleGradient} allDay={allDay} />
             {/* 左端の帯：選んだ人の色で分割（4人なら4色）。予定の色を指定したらその1色 */}
             <MemberStripe colors={color ? [] : orderedMembers.map((p) => p.color)} fallback={shownColor} width={6} />
             <TextInput
@@ -582,7 +586,7 @@ const styles = StyleSheet.create({
   root: { padding: 16, paddingBottom: 48 },
   headerSave: { fontSize: 17, fontWeight: '700', paddingHorizontal: 4 },
   titleRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  titleBox: {
+  titleBox: { zIndex: 0,
     flex: 1,
     minWidth: 0,
     flexDirection: 'row',

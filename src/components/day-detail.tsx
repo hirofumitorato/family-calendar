@@ -15,6 +15,7 @@ import { weatherCodeToIcon } from '@/lib/weather';
 import type { MonthData } from '@/state/app-store';
 import { useCalendarPrefs } from '@/state/calendar-prefs';
 import { confirm } from '@/utils/dialog';
+import { EventGradient, gradientColorsOf } from '@/components/event-gradient';
 import { eventLook } from '@/utils/event-look';
 
 export function DayDetail({
@@ -129,12 +130,18 @@ export function DayDetail({
         occs.map((o) => {
           // カレンダー・編集画面のタイトルと同じ色にする
           const look = eventLook(o.color, o.event.all_day, t);
+          const grad = gradientColorsOf(o.event.color, o.members.map((m) => m.color));
           return (
           <Pressable
             key={o.key}
             accessibilityLabel={`${o.event.title} の内容を見る`}
             onPress={() => onPressEvent(o)}
-            style={({ pressed }) => [styles.event, { backgroundColor: look.bg, opacity: pressed ? 0.7 : 1 }]}>
+            style={({ pressed }) => [
+              styles.event,
+              { backgroundColor: grad.length > 1 ? 'transparent' : look.bg, opacity: pressed ? 0.7 : 1 },
+            ]}>
+            {/* 複数人なら背景を選んだ人の色のグラデーションに */}
+            <EventGradient colors={grad} allDay={o.event.all_day} />
             {/* 左端の帯：選ばれた人の色で分割（予定の色を指定していればその色） */}
             <MemberStripe
               colors={o.event.color ? [] : o.members.map((m) => m.color)}
@@ -196,7 +203,7 @@ const styles = StyleSheet.create({
   stickerRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   sticker: { fontSize: 24 },
   empty: { fontSize: 14, paddingVertical: 8 },
-  event: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, overflow: 'hidden', minHeight: 56 },
+  event: { zIndex: 0, flexDirection: 'row', alignItems: 'center', borderRadius: 10, overflow: 'hidden', minHeight: 56 },
   colorBar: { width: 4, alignSelf: 'stretch' },
   badgeCol: { paddingLeft: 8, alignSelf: 'center' },
   eventBody: { flex: 1, paddingLeft: 8, paddingVertical: 8, gap: 3 },

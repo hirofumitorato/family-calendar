@@ -3,6 +3,7 @@ import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import { MemberBadges } from '@/components/member-badge';
 import { MemberStripe } from '@/components/member-stripe';
 import { useTheme } from '@/hooks/use-theme';
+import { EventGradient, gradientColorsOf } from '@/components/event-gradient';
 import { eventLook } from '@/utils/event-look';
 import { formatDayLabel, formatTime, isSameDay } from '@/lib/date';
 import { describeRepeat } from '@/lib/repeat';
@@ -53,8 +54,14 @@ export function EventDetailSheet({
             <View
               style={[
                 styles.titleRow,
-                { backgroundColor: eventLook(o.color, o.event.all_day, t).bg },
+                {
+                  backgroundColor:
+                    gradientColorsOf(o.event.color, o.members.map((m) => m.color)).length > 1
+                      ? 'transparent'
+                      : eventLook(o.color, o.event.all_day, t).bg,
+                },
               ]}>
+              <EventGradient colors={gradientColorsOf(o.event.color, o.members.map((m) => m.color))} allDay={o.event.all_day} />
               <MemberStripe
                 colors={o.event.color ? [] : o.members.map((m) => m.color)}
                 fallback={o.color}
@@ -140,7 +147,7 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: { maxHeight: '80%', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, paddingBottom: 28 },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-  titleRow: {
+  titleRow: { zIndex: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

@@ -47,6 +47,10 @@ export interface CalendarRepository {
   createEvent(event: NewCalendarEvent): Promise<CalendarEvent>;
   updateEvent(id: string, patch: Partial<NewCalendarEvent>): Promise<void>;
   deleteEvent(id: string): Promise<void>;
+  /** まとめて追加（開運カレンダーなど） */
+  createEvents(events: NewCalendarEvent[]): Promise<void>;
+  /** source が一致し、from 以降に始まる予定をまとめて削除。削除件数を返す */
+  deleteEventsBySource(calendarIds: string[], source: string, from: Date): Promise<number>;
 
   /** fromKey〜toKey（両端含む, 'YYYY-MM-DD'） */
   listStickers(calendarIds: string[], fromKey: string, toKey: string): Promise<DaySticker[]>;

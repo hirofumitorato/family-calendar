@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { KaiunSheet } from '@/components/kaiun-sheet';
 import { MemberBadge } from '@/components/member-badge';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabel, formatTime, isSameDay, toDateKey } from '@/lib/date';
 import { getHolidayName } from '@/lib/holidays';
+import { getRokuyo } from '@/lib/rokuyo';
 import type { DaySticker, EventOccurrence } from '@/lib/types';
 import { weatherCodeToIcon } from '@/lib/weather';
 import type { MonthData } from '@/state/app-store';
+import { useCalendarPrefs } from '@/state/calendar-prefs';
 import { confirm } from '@/utils/dialog';
 
 export function DayDetail({
@@ -15,7 +19,6 @@ export function DayDetail({
   onPressEvent,
   onEditEvent,
   onDeleteEvent,
-  onAddSticker,
   onRemoveSticker,
 }: {
   date: Date;
@@ -24,7 +27,6 @@ export function DayDetail({
   onPressEvent: (o: EventOccurrence) => void;
   onEditEvent: (o: EventOccurrence) => void;
   onDeleteEvent: (o: EventOccurrence) => void;
-  onAddSticker: () => void;
   onRemoveSticker: (s: DaySticker) => void;
 }) {
   const t = useTheme();
@@ -33,6 +35,9 @@ export function DayDetail({
   const weather = data.weatherByDay.get(key);
   const stickers = data.stickersByDay.get(key) ?? [];
   const occs = data.occurrencesByDay.get(key) ?? [];
+  const prefs = useCalendarPrefs();
+  const rokuyo = prefs.rokuyo ? getRokuyo(date) : null;
+  const [kaiunOpen, setKaiunOpen] = useState(false);
 
   const timeLabel = (o: EventOccurrence) => {
     if (o.event.all_day) return '終日';
@@ -45,7 +50,12 @@ export function DayDetail({
     <View style={styles.root}>
       <View style={styles.header}>
         <View>
-          <Text style={[styles.dayLabel, { color: t.text }]}>{formatDayLabel(date)}</Text>
+          <View style={styles.dayRow}>
+            <Text style={[styles.dayLabel, { color: t.text }]}>{formatDayLabel(date)}</Text>
+            {rokuyo && (
+              <Text style={[styles.rokuyo, { color: rokuyo === '大安' ? t.sunday : t.textSecondary }]}>{rokuyo}</Text>
+            )}
+          </View>
           {holiday && <Text style={[styles.holiday, { color: t.sunday }]}>{holiday}</Text>}
         </View>
         {weather && (
@@ -60,28 +70,42 @@ export function DayDetail({
         )}
       </View>
 
-      <View style={styles.stickerRow}>
-        {stickers.map((s) => (
-          <Pressable
-            key={s.id}
-            accessibilityLabel={`スタンプ ${s.sticker} を外す`}
-            onPress={async () => {
-              if (await confirm(`スタンプ ${s.sticker} を外しますか？`, { okText: '外す', destructive: true })) {
-                onRemoveSticker(s);
-              }
-            }}>
-            <Text style={styles.sticker}>{s.sticker}</Text>
-          </Pressable>
-        ))}
+      {/* 貼ってあるスタンプ（タップで外す） */}
+      {stickers.length > 0 && (
+        <View style={styles.stickerRow}>
+          {stickers.map((s) => (
+            <Pressable
+              key={s.id}
+              accessibilityLabel={`スタンプ ${s.sticker} を外す`}
+              onPress={async () => {
+                if (await confirm(`スタンプ ${s.sticker} を外しますか？`, { okText: '外す', destructive: true })) {
+                  onRemoveSticker(s);
+                }
+              }}>
+              <Text style={styles.sticker}>{s.sticker}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {/* 表示するカレンダー */}
+      <View style={styles.calRow}>
+        <Text style={[styles.calLabel, { color: t.textSecondary }]}>表示するカレンダー</Text>
         <Pressable
-          onPress={onAddSticker}
-          accessibilityLabel="スタンプを追加"
-          style={[styles.addSticker, { borderColor: t.border }]}>
-          <Text style={{ color: t.textSecondary, fontSize: 12 }}>＋スタンプ</Text>
+          accessibilityLabel={`六曜カレンダー ${prefs.rokuyo ? 'オン' : 'オフ'}`}
+          accessibilityState={{ selected: prefs.rokuyo }}
+          onPress={() => prefs.update({ rokuyo: !prefs.rokuyo })}
+          style={[styles.calChip, { borderColor: t.border }, prefs.rokuyo && { backgroundColor: t.accent, borderColor: t.accent }]}>
+          <Text style={{ color: prefs.rokuyo ? '#fff' : t.text, fontSize: 12 }}>{prefs.rokuyo ? '✓ ' : ''}六曜</Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel={`開運カレンダー ${prefs.kaiun ? 'オン' : 'オフ'}`}
+          accessibilityState={{ selected: Boolean(prefs.kaiun) }}
+          onPress={() => setKaiunOpen(true)}
+          style={[styles.calChip, { borderColor: t.border }, prefs.kaiun && { backgroundColor: t.accent, borderColor: t.accent }]}>
+          <Text style={{ color: prefs.kaiun ? '#fff' : t.text, fontSize: 12 }}>{prefs.kaiun ? '✓ ' : '＋ '}🧭 開運</Text>
         </Pressable>
       </View>
-
-      <Text style={[styles.hint, { color: t.textMuted }]}>日付マスを長押しすると、マスの色を変えられます</Text>
 
       {occs.length === 0 ? (
         <Text style={[styles.empty, { color: t.textMuted }]}>予定はありません</Text>
@@ -128,6 +152,7 @@ export function DayDetail({
           </Pressable>
         ))
       )}
+      <KaiunSheet visible={kaiunOpen} onClose={() => setKaiunOpen(false)} />
     </View>
   );
 }
@@ -135,14 +160,18 @@ export function DayDetail({
 const styles = StyleSheet.create({
   root: { padding: 16, gap: 10 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  dayRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   dayLabel: { fontSize: 18, fontWeight: '700' },
+  rokuyo: { fontSize: 13, fontWeight: '600' },
+  calRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  calLabel: { fontSize: 12 },
+  calChip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
   holiday: { fontSize: 12, marginTop: 2 },
   weather: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   weatherEmoji: { fontSize: 20 },
   weatherText: { fontSize: 12 },
   stickerRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   sticker: { fontSize: 24 },
-  addSticker: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
   empty: { fontSize: 14, paddingVertical: 8 },
   event: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, overflow: 'hidden', minHeight: 56 },
   colorBar: { width: 4, alignSelf: 'stretch' },
@@ -151,5 +180,4 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 15, fontWeight: '600' },
   eventTime: { fontSize: 12 },
   rowButton: { paddingHorizontal: 8, alignSelf: 'stretch', justifyContent: 'center' },
-  hint: { fontSize: 11 },
 });

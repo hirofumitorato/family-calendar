@@ -44,6 +44,8 @@ export type CalendarEvent = {
   remind_minutes_before: number[];
   /** 誰の予定か（family_people.id）。null = 家族みんな */
   member_id: string | null;
+  /** 自動で作った予定の出どころ（'kaiun' = 開運カレンダー）。手で作った予定は null/未指定 */
+  source?: string | null;
 };
 
 export type NewCalendarEvent = Omit<CalendarEvent, 'id'>;

@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { AppProvider, useApp } from '@/state/app-store';
+import { CalendarPrefsProvider } from '@/state/calendar-prefs';
 import { ThemePreferenceProvider, useThemePreference } from '@/state/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -57,7 +58,9 @@ function ThemedRoot() {
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <AppProvider>
-        <RootStack />
+        <CalendarPrefsProvider>
+          <RootStack />
+        </CalendarPrefsProvider>
       </AppProvider>
     </ThemeProvider>
   );

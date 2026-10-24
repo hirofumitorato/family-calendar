@@ -95,6 +95,28 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
     async deleteEvent(id) {
       check(await sb.from('events').delete().eq('id', id));
     },
+    async createEvents(inputs) {
+      if (!inputs.length) return;
+      const { data: auth } = await sb.auth.getUser();
+      // 一度に大量に送らないよう 200 件ずつ
+      for (let i = 0; i < inputs.length; i += 200) {
+        const chunk = inputs.slice(i, i + 200).map((e) => ({ ...e, created_by: auth.user?.id }));
+        check(await sb.from('events').insert(chunk));
+      }
+    },
+    async deleteEventsBySource(calendarIds, source, from) {
+      if (!calendarIds.length) return 0;
+      const deleted = check<{ id: string }[]>(
+        await sb
+          .from('events')
+          .delete()
+          .in('calendar_id', calendarIds)
+          .eq('source', source)
+          .gte('starts_at', from.toISOString())
+          .select('id'),
+      );
+      return deleted.length;
+    },
 
     async listStickers(calendarIds, fromKey, toKey) {
       if (!calendarIds.length) return [];

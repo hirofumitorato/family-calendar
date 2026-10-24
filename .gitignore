@@ -45,3 +45,5 @@ yarn-error.*
 # generated native projects (CNG)
 /ios
 /android
+scripts/koyomi/*.json
+scripts/koyomi/koyomi-data.ts

@@ -6,12 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DayDetail } from '@/components/day-detail';
 import { MonthGrid } from '@/components/month-grid';
 import { SwipePager } from '@/components/swipe-pager';
-import { StickerPicker } from '@/components/sticker-picker';
 import { DayColorPicker } from '@/components/day-color-picker';
 import { DeleteEventSheet } from '@/components/delete-event-sheet';
 import { EventDetailSheet } from '@/components/event-detail-sheet';
 import { deleteEventWithScope } from '@/data/delete-event';
-import { DAY_STICKER_GROUPS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
 import { addMonths, formatDayLabel, startOfDay, toDateKey } from '@/lib/date';
 import type { EventOccurrence } from '@/lib/types';
@@ -23,7 +21,6 @@ export default function CalendarScreen() {
   const { repo, defaultCalendar, bumpRevision } = useApp();
   const [cursor, setCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selected, setSelected] = useState(() => startOfDay(new Date()));
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [colorTarget, setColorTarget] = useState<Date | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EventOccurrence | null>(null);
   const [viewTarget, setViewTarget] = useState<EventOccurrence | null>(null);
@@ -47,13 +44,6 @@ export default function CalendarScreen() {
     const now = new Date();
     setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
     setSelected(startOfDay(now));
-  };
-
-  const addSticker = async (value: string | null) => {
-    setPickerOpen(false);
-    if (!value || !defaultCalendar) return;
-    await repo.addSticker(defaultCalendar.id, toDateKey(selected), value);
-    bumpRevision();
   };
 
   const setDayColor = async (color: string | null) => {
@@ -115,7 +105,6 @@ export default function CalendarScreen() {
           onPressEvent={setViewTarget}
           onEditEvent={openEditor}
           onDeleteEvent={setDeleteTarget}
-          onAddSticker={() => setPickerOpen(true)}
           onRemoveSticker={async (s) => {
             await repo.removeSticker(s.id);
             bumpRevision();
@@ -161,14 +150,6 @@ export default function CalendarScreen() {
         current={colorTarget ? data.colorByDay.get(toDateKey(colorTarget)) ?? null : null}
         onSelect={setDayColor}
         onClose={() => setColorTarget(null)}
-      />
-
-      <StickerPicker
-        visible={pickerOpen}
-        title="スタンプを貼る"
-        groups={DAY_STICKER_GROUPS}
-        onSelect={addSticker}
-        onClose={() => setPickerOpen(false)}
       />
     </SafeAreaView>
   );

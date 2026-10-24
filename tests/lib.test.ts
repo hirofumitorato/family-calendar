@@ -6,6 +6,9 @@ import { buildMonthGrid, toDateKey, weeksInMonth } from '../src/lib/date.ts';
 import { getJapaneseHolidays } from '../src/lib/holidays.ts';
 import { expandOccurrences, truncateRRuleBefore } from '../src/lib/recurrence.ts';
 import { buildRepeat, describeRepeat, parseRepeat } from '../src/lib/repeat.ts';
+import { birthStars, dailyDirections, dayKanshi, dayStar, monthStar, solarMonth, yearStar } from '../src/lib/kyusei.ts';
+import { kaiunDays } from '../src/lib/kaiun.ts';
+import { getRokuyo, toLunar } from '../src/lib/rokuyo.ts';
 import { weatherCodeToIcon } from '../src/lib/weather.ts';
 
 test('月グリッドは日曜始まりの42日', () => {
@@ -127,4 +130,62 @@ test('月に必要な週の数', () => {
   assert.equal(weeksInMonth(2026, 9), 5); // 2026年10月（1日が木曜）
   assert.equal(weeksInMonth(2026, 7), 6); // 2026年8月（1日が土曜・31日）
   assert.equal(weeksInMonth(2026, 1), 4); // 2026年2月（1日が日曜・28日）
+});
+
+test('六曜・旧暦', () => {
+  const d = (s: string) => new Date(`${s}T12:00:00`);
+  assert.equal(getRokuyo(d('2026-10-24')), '仏滅');
+  assert.equal(getRokuyo(d('2026-01-15')), '先勝');
+  assert.equal(getRokuyo(d('2026-06-20')), '仏滅');
+  // 2033年問題：2033-12-22 から閏11月
+  assert.deepEqual(toLunar(d('2033-12-22')), { month: 11, day: 1, leap: true });
+  // 旧正月 2026-02-17
+  assert.deepEqual(toLunar(d('2026-02-17')), { month: 1, day: 1, leap: false });
+});
+
+test('九星：年・月・本命星・月命星', () => {
+  const d = (s: string) => new Date(`${s}T12:00:00`);
+  assert.equal(yearStar(2026), 1); // 2026年は一白
+  assert.equal(yearStar(1990), 1);
+  assert.deepEqual(solarMonth(d('2026-10-24')), { year: 2026, month: 9 }); // 戌月
+  assert.deepEqual(solarMonth(d('2026-02-03')), { year: 2025, month: 12 }); // 立春前は前年の丑月
+  assert.equal(monthStar(2026, 9), 9); // 2026年10月の月盤は九紫
+  // 1985-06-15 生まれ：1985年＝六白、午月 → 月命星
+  const s = birthStars(d('1985-06-15'));
+  assert.equal(s.honmei, 6);
+  assert.equal(s.getsumei, monthStar(1985, 5));
+});
+
+test('日盤（八雲院の表示と照合した日）', () => {
+  const d = (s: string) => new Date(`${s}T12:00:00`);
+  assert.equal(dayKanshi(d('2026-10-24')), '辛未');
+  assert.equal(dayKanshi(d('2026-01-15')), '己丑');
+  assert.equal(dayKanshi(d('2026-06-20')), '乙丑');
+  assert.equal(dayStar(d('2026-10-24')), 8);
+  assert.equal(dayStar(d('2026-01-15')), 8); // 陽遁
+  assert.equal(dayStar(d('2026-06-20')), 8); // 陰遁に切り替わった翌日
+
+  const pick = (r: ReturnType<typeof dailyDirections>) =>
+    Object.fromEntries(r.directions.map((x) => [x.direction, x.best ? '最大吉方' : x.good ? '吉方' : x.bad.join('、') || 'なし']));
+  // 本命一白・月命一白 2026-10-24
+  assert.deepEqual(pick(dailyDirections(d('2026-10-24'), 1, 1)), {
+    N: '最大吉方', NE: '暗剣殺、日破、定位対冲', E: '本命的殺、月命的殺', SE: '最大吉方',
+    S: '最大吉方', SW: '五黄殺', W: '本命殺、月命殺', NW: 'なし',
+  });
+  // 本命一白・月命二黒：北・南は吉方、南東は最大吉方
+  const r2 = pick(dailyDirections(d('2026-10-24'), 1, 2));
+  assert.equal(r2.N, '吉方');
+  assert.equal(r2.SE, '最大吉方');
+  assert.equal(r2.S, '吉方');
+  assert.equal(dailyDirections(d('2026-10-24'), 1, 1).tendo, 'S');
+  assert.equal(dailyDirections(d('2026-01-15'), 1, 1).tendo, 'W');
+  assert.equal(dailyDirections(d('2026-06-20'), 1, 1).tendo, 'NW');
+});
+
+test('開運カレンダーの予定', () => {
+  const days = kaiunDays(new Date('2026-10-24T00:00:00'), 1, 1, 1);
+  assert.equal(days.length, 1);
+  assert.equal(days[0].title, '最大吉方 北・南東・南 ／ 天道吉方 南');
+  assert.match(days[0].memo, /日盤 中宮 八白土星（辛未）/);
+  assert.match(days[0].memo, /yakumoin\.info\/daily\/direction\/date\/20261024/);
 });

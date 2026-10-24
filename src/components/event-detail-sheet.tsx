@@ -1,4 +1,4 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MemberBadge } from '@/components/member-badge';
 import { useTheme } from '@/hooks/use-theme';
@@ -72,7 +72,22 @@ export function EventDetailSheet({
             {o.event.memo && (
               <View style={[styles.memo, { backgroundColor: t.backgroundElement }]}>
                 <Text style={[styles.memoLabel, { color: t.textSecondary }]}>メモ</Text>
-                <Text style={[styles.memoText, { color: t.text }]}>{o.event.memo}</Text>
+                <Text style={[styles.memoText, { color: t.text }]}>
+                  {/* メモ内の URL はタップで開けるようにする */}
+                  {o.event.memo.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
+                    /^https?:\/\//.test(part) ? (
+                      <Text
+                        key={i}
+                        accessibilityRole="link"
+                        onPress={() => Linking.openURL(part)}
+                        style={{ color: t.saturday, textDecorationLine: 'underline' }}>
+                        {part}
+                      </Text>
+                    ) : (
+                      part
+                    ),
+                  )}
+                </Text>
               </View>
             )}
           </ScrollView>

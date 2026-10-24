@@ -6,7 +6,9 @@ import type { ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { WEEKDAY_LABELS, buildMonthGrid, isSameDay, toDateKey, weeksInMonth } from '@/lib/date';
 import { getHolidayName } from '@/lib/holidays';
+import { getRokuyo } from '@/lib/rokuyo';
 import type { MonthData } from '@/state/app-store';
+import { useCalendarPrefs } from '@/state/calendar-prefs';
 import { weatherCodeToIcon } from '@/lib/weather';
 
 const MAX_CHIPS = 3;
@@ -32,6 +34,7 @@ export function MonthGrid({
   const t = useTheme();
   const days = buildMonthGrid(year, month);
   const weeks = weeksInMonth(year, month);
+  const { rokuyo: showRokuyo } = useCalendarPrefs();
   const today = new Date();
 
   return (
@@ -64,6 +67,7 @@ export function MonthGrid({
                 theme={t}
                 onPress={onSelect}
                 onLongPress={onLongPress}
+                showRokuyo={showRokuyo}
               />
             );
           })}
@@ -83,6 +87,7 @@ const DayCell = memo(function DayCell({
   theme: t,
   onPress,
   onLongPress,
+  showRokuyo,
 }: {
   date: Date;
   dateKey: string;
@@ -93,7 +98,9 @@ const DayCell = memo(function DayCell({
   theme: ThemeColors;
   onPress: (d: Date) => void;
   onLongPress?: (d: Date) => void;
+  showRokuyo: boolean;
 }) {
+  const rokuyo = showRokuyo ? getRokuyo(date) : null;
   const holiday = getHolidayName(dateKey);
   const dow = date.getDay();
   const weather = data.weatherByDay.get(dateKey);
@@ -138,6 +145,13 @@ const DayCell = memo(function DayCell({
             {date.getDate()}
           </Text>
         </View>
+        {rokuyo && (
+          <Text
+            style={[styles.rokuyo, { color: rokuyo === '大安' ? t.sunday : t.textSecondary }, !inMonth && { opacity: 0.5 }]}
+            numberOfLines={1}>
+            {rokuyo}
+          </Text>
+        )}
         {stickers.length > 0 && (
           <Text style={styles.stickers} numberOfLines={1}>
             {stickers.slice(0, 2).map((s) => s.sticker).join('')}
@@ -192,6 +206,7 @@ const styles = StyleSheet.create({
   dateBadge: { minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   dateNum: { fontSize: 12, fontWeight: '600', paddingHorizontal: 2 },
   dateToday: { fontWeight: '800' },
+  rokuyo: { fontSize: 8, fontWeight: '600', flexShrink: 1 },
   weather: { fontSize: 10 },
   stickers: { fontSize: 10, lineHeight: 13 },
   chip: { marginTop: 1.5, paddingHorizontal: 2, borderRadius: 3 },

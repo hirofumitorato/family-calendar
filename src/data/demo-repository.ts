@@ -196,6 +196,18 @@ export function createDemoRepository(): CalendarRepository {
       events = events.filter((e) => e.id !== id);
       notify();
     },
+    async createEvents(inputs) {
+      events = [...events, ...inputs.map((e) => ({ ...e, id: `e${seq++}` }))];
+      notify();
+    },
+    async deleteEventsBySource(calendarIds, source, from) {
+      const before = events.length;
+      events = events.filter(
+        (e) => !(calendarIds.includes(e.calendar_id) && e.source === source && new Date(e.starts_at) >= from),
+      );
+      notify();
+      return before - events.length;
+    },
 
     async listStickers(calendarIds, fromKey, toKey) {
       return stickers.filter(

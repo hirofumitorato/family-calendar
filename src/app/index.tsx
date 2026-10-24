@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DayDetail } from '@/components/day-detail';
 import { MonthGrid } from '@/components/month-grid';
+import { SwipePager } from '@/components/swipe-pager';
 import { StickerPicker } from '@/components/sticker-picker';
 import { DayColorPicker } from '@/components/day-color-picker';
 import { DeleteEventSheet } from '@/components/delete-event-sheet';
@@ -29,7 +30,14 @@ export default function CalendarScreen() {
   const month = cursor.getMonth();
   const data = useMonthData(year, month);
 
-  const move = (n: number) => setCursor((c) => addMonths(c, n));
+  // 月を切り替えたら、その月に今日があれば今日、なければ1日を選択する
+  const move = (n: number) => {
+    const next = addMonths(cursor, n);
+    setCursor(next);
+    const now = new Date();
+    const hasToday = now.getFullYear() === next.getFullYear() && now.getMonth() === next.getMonth();
+    setSelected(hasToday ? startOfDay(now) : next);
+  };
   const goToday = () => {
     const now = new Date();
     setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -75,20 +83,23 @@ export default function CalendarScreen() {
       </View>
 
       <ScrollView>
-        <MonthGrid
-          year={year}
-          month={month}
-          selected={selected}
-          onSelect={(d) => {
-            setSelected(d);
-            if (d.getMonth() !== month) setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
-          }}
-          onLongPress={(d) => {
-            setSelected(d);
-            setColorTarget(d);
-          }}
-          data={data}
-        />
+        {/* 横スワイプで月を切り替え（左→翌月、右→前月） */}
+        <SwipePager onPrev={() => move(-1)} onNext={() => move(1)}>
+          <MonthGrid
+            year={year}
+            month={month}
+            selected={selected}
+            onSelect={(d) => {
+              setSelected(d);
+              if (d.getMonth() !== month) setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+            }}
+            onLongPress={(d) => {
+              setSelected(d);
+              setColorTarget(d);
+            }}
+            data={data}
+          />
+        </SwipePager>
         <DayDetail
           date={selected}
           data={data}

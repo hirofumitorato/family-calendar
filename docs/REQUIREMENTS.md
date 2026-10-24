@@ -38,7 +38,7 @@ iPhone と Android の両方で、家族みんなで使えるカレンダーア�
 ## 今後のTODO（優先順）
 
 1. リマインド通知（expo-notifications + Expo Push。Supabase cron で送信）
-2. 週表示・日表示、月表示のスワイプ切替
+2. 週表示・日表示（月表示のスワイプ切替は対応済み）
 3. 日付・時刻入力をネイティブのピッカーに（@react-native-community/datetimepicker）
 4. 天気地点を現在地から設定（expo-location）、メンバー個人ごとの地点
 5. 画像スタンプ（Supabase Storage、`sticker = 'img:<path>'`）

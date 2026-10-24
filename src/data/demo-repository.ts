@@ -50,7 +50,7 @@ function seedEvents(): CalendarEvent[] {
     exdates: [],
     icon: null,
     remind_minutes_before: [],
-    member_id: ALL,
+    member_ids: [ALL],
     ...extra,
   });
 
@@ -64,21 +64,24 @@ function seedEvents(): CalendarEvent[] {
       icon: '🗑️',
       rrule: 'FREQ=WEEKLY;BYDAY=MO,TH',
     }),
-    ev('e3', FAMILY_CAL, '家族で温泉', at(today, 9, 10), at(today, 10, 17), { icon: '♨️' }),
+    ev('e3', FAMILY_CAL, '家族で温泉', at(today, 9, 10), at(today, 10, 17), {
+      icon: '♨️',
+      member_ids: [ME, PARTNER, KID],
+    }),
     ev('e4', MY_CAL, '歯医者', at(today, 1, 15), at(today, 1, 16), {
-      member_id: ME,
+      member_ids: [ME],
       icon: '🦷',
       remind_minutes_before: [60],
     }),
-    ev('e5', MY_CAL, '打ち合わせ', at(today, 2, 13), at(today, 2, 14), { icon: '💼', member_id: ME }),
+    ev('e5', MY_CAL, '打ち合わせ', at(today, 2, 13), at(today, 2, 14), { icon: '💼', member_ids: [ME] }),
     ev('e7', FAMILY_CAL, 'ピアノ', at(today, 1, 17), at(today, 1, 18), {
       icon: '🎹',
-      member_id: KID,
+      member_ids: [KID],
       rrule: 'FREQ=WEEKLY;BYDAY=' + ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][addDays(today, 1).getDay()],
     }),
-    ev('e8', FAMILY_CAL, 'ヨガ', at(today, 4, 10), at(today, 4, 11), { icon: '🧘', member_id: PARTNER }),
+    ev('e8', FAMILY_CAL, 'ヨガ', at(today, 4, 10), at(today, 4, 11), { icon: '🧘', member_ids: [PARTNER] }),
     ev('e6', MY_CAL, 'ジム', at(today, -1, 19), at(today, -1, 20), {
-      member_id: ME,
+      member_ids: [ME],
       icon: '🏃',
       rrule: 'FREQ=WEEKLY;BYDAY=WE,SA',
     }),
@@ -97,7 +100,7 @@ export function createDemoRepository(): CalendarRepository {
     category: string | null,
     title: string,
     icon: string,
-    member_id: string | null,
+    member_ids: string[],
     start_time: string | null,
     end_time: string | null,
     rrule: string | null,
@@ -108,7 +111,7 @@ export function createDemoRepository(): CalendarRepository {
     category,
     title,
     icon,
-    member_id,
+    member_ids,
     calendar_id: FAMILY_CAL,
     all_day: start_time === null,
     start_time,
@@ -120,15 +123,15 @@ export function createDemoRepository(): CalendarRepository {
     ...extra,
   });
   let templates: EventTemplate[] = [
-    tpl('t1', '家事', '燃えるゴミ', '🗑️', ALL, '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=MO,TH'),
-    tpl('t2', '家事', '資源ゴミ', '♻️', ALL, '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=WE'),
-    tpl('t3', '習い事', 'スイミング', '🏊', KID, '16:00', '17:00', 'FREQ=WEEKLY;BYDAY=WE', {
+    tpl('t1', '家事', '燃えるゴミ', '🗑️', [ALL], '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=MO,TH'),
+    tpl('t2', '家事', '資源ゴミ', '♻️', [ALL], '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=WE'),
+    tpl('t3', '習い事', 'スイミング', '🏊', [KID], '16:00', '17:00', 'FREQ=WEEKLY;BYDAY=WE', {
       remind_minutes_before: [60],
       location: '市民プール',
     }),
-    tpl('t4', '習い事', 'ピアノ', '🎹', KID, '17:00', '18:00', 'FREQ=WEEKLY;BYDAY=TU'),
-    tpl('t5', '病院', '歯医者', '🦷', ME, '15:00', '16:00', null, { remind_minutes_before: [60] }),
-    tpl('t6', '仕事', '在宅勤務', '💻', PARTNER, null, null, 'FREQ=WEEKLY;BYDAY=FR'),
+    tpl('t4', '習い事', 'ピアノ', '🎹', [KID], '17:00', '18:00', 'FREQ=WEEKLY;BYDAY=TU'),
+    tpl('t5', '病院', '歯医者', '🦷', [ME], '15:00', '16:00', null, { remind_minutes_before: [60] }),
+    tpl('t6', '仕事', '在宅勤務', '💻', [PARTNER], null, null, 'FREQ=WEEKLY;BYDAY=FR'),
   ];
   let genres: Genre[] = ['家事', '習い事', '病院', '仕事'].map((name, i) => ({
     id: `g${i + 1}`,
@@ -300,8 +303,8 @@ export function createDemoRepository(): CalendarRepository {
     async deletePerson(id) {
       people = people.filter((p) => p.id !== id);
       // DB の on delete set null と同じ動き
-      events = events.map((e) => (e.member_id === id ? { ...e, member_id: null } : e));
-      templates = templates.map((t) => (t.member_id === id ? { ...t, member_id: null } : t));
+      events = events.map((e) => ({ ...e, member_ids: e.member_ids.filter((x) => x !== id) }));
+      templates = templates.map((t) => ({ ...t, member_ids: t.member_ids.filter((x) => x !== id) }));
       notify();
     },
 

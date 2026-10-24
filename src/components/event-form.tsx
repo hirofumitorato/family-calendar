@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { ColorPopover } from '@/components/color-popover';
+import { MemberStripe } from '@/components/member-stripe';
 import { DateTimeRow, type PickerOpen } from '@/components/date-time-picker';
 import { GenreSheet } from '@/components/genre-sheet';
 import { PeopleSheet } from '@/components/people-sheet';
@@ -98,9 +99,9 @@ export function EventForm(props: Props) {
 
   const [title, setTitle] = useState(initial?.title ?? tpl0?.title ?? '');
   const [icon, setIcon] = useState<string | null>(initial?.icon ?? tpl0?.icon ?? null);
-  // 新しい予定は、並び順が先頭の項目（ふつうは「みんな」）を選んだ状態から始める
-  const [memberId, setMemberId] = useState<string | null>(
-    initial ? initial.member_id : tpl0 ? tpl0.member_id : people[0]?.id ?? null,
+  // 誰の予定か（複数選べる）。新しい予定は、並び順が先頭の項目（ふつうは「みんな」）を選んだ状態から始める
+  const [memberIds, setMemberIds] = useState<string[]>(
+    initial ? initial.member_ids ?? [] : tpl0 ? tpl0.member_ids ?? [] : people[0] ? [people[0].id] : [],
   );
   const [calendarId, setCalendarId] = useState(
     initial?.calendar_id ?? tpl0?.calendar_id ?? defaultCalendarId ?? calendars[0]?.id,
@@ -146,8 +147,14 @@ export function EventForm(props: Props) {
 
   // 選んでいた人が削除されたら未指定に戻す
   useEffect(() => {
-    if (memberId && !people.some((p) => p.id === memberId)) setMemberId(null);
-  }, [people, memberId]);
+    const alive = memberIds.filter((id) => people.some((p) => p.id === id));
+    if (alive.length !== memberIds.length) setMemberIds(alive);
+  }, [people, memberIds]);
+
+  const toggleMember = (id: string) =>
+    setMemberIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  // 選んだ順ではなく、一覧の並び順で持つ（帯の色の順番がいつも同じになるように）
+  const orderedMembers = people.filter((p) => memberIds.includes(p.id));
 
   const startWeekday = DATE_RE.test(startDate) ? parseDateKey(startDate).getDay() : new Date().getDay();
   const weeklyDays = freq === 'WEEKLY' && byDay.length === 0 ? [startWeekday] : byDay;
@@ -163,7 +170,7 @@ export function EventForm(props: Props) {
   const applyTemplate = (tpl: EventTemplate) => {
     setTitle(tpl.title);
     setIcon(tpl.icon);
-    setMemberId(tpl.member_id && people.some((p) => p.id === tpl.member_id) ? tpl.member_id : null);
+    setMemberIds((tpl.member_ids ?? []).filter((id) => people.some((p) => p.id === id)));
     if (tpl.calendar_id && calendars.some((c) => c.id === tpl.calendar_id)) setCalendarId(tpl.calendar_id);
     setAllDay(tpl.all_day);
     if (tpl.start_time) setStartTime(tpl.start_time);
@@ -183,7 +190,7 @@ export function EventForm(props: Props) {
     color,
     title: title.trim(),
     icon,
-    member_id: memberId,
+    member_ids: orderedMembers.map((p) => p.id),
     calendar_id: calendarId ?? null,
     all_day: allDay,
     start_time: allDay ? null : startTime,
@@ -237,7 +244,7 @@ export function EventForm(props: Props) {
         calendar_id: calendarId,
         title: title.trim(),
         icon,
-        member_id: memberId,
+        member_ids: orderedMembers.map((p) => p.id),
         all_day: allDay,
         starts_at: s.toISOString(),
         ends_at: e.toISOString(),
@@ -257,7 +264,7 @@ export function EventForm(props: Props) {
 
   // カレンダーに表示される色（予定の色 → 誰の予定かの色 → カレンダーの色）
   const autoColor =
-    people.find((p) => p.id === memberId)?.color ?? calendars.find((c) => c.id === calendarId)?.color ?? t.accent;
+    orderedMembers[0]?.color ?? calendars.find((c) => c.id === calendarId)?.color ?? t.accent;
   const shownColor = color ?? autoColor;
 
   const input = [styles.input, { color: t.text, backgroundColor: t.backgroundElement }];
@@ -306,8 +313,8 @@ export function EventForm(props: Props) {
         )}
 
         {/* ジャンル（テンプレートとして保存するときに使う）。タイトルの上で選び、追加・編集もできる */}
-        <View style={[styles.labelRow, { marginTop: 0 }]}>
-          <Text style={[styles.label, { color: t.textSecondary, marginTop: 0 }]}>ジャンル</Text>
+        <View style={[styles.labelRow, { marginTop: 4 }]}>
+          <Text style={[styles.label, { color: t.textSecondary, marginTop: 0, marginBottom: 0 }]}>ジャンル</Text>
           <Pressable onPress={() => setGenreSheet(true)} hitSlop={8} accessibilityLabel="ジャンルを追加・編集">
             <Text style={{ color: t.accent, fontSize: 13, fontWeight: '600' }}>＋ 追加・編集</Text>
           </Pressable>
@@ -339,8 +346,10 @@ export function EventForm(props: Props) {
           <View
             style={[
               styles.titleBox,
-              { backgroundColor: eventLook(shownColor, allDay, t).bg, borderLeftColor: shownColor },
+              { backgroundColor: eventLook(shownColor, allDay, t).bg },
             ]}>
+            {/* 左端の帯：選んだ人の色で分割（4人なら4色）。予定の色を指定したらその1色 */}
+            <MemberStripe colors={color ? [] : orderedMembers.map((p) => p.color)} fallback={shownColor} width={6} />
             <TextInput
               value={title}
               onChangeText={setTitle}
@@ -361,17 +370,33 @@ export function EventForm(props: Props) {
         </View>
 
         <View style={styles.labelRow}>
-          <Text style={[styles.label, { color: t.textSecondary }]}>誰の予定？</Text>
+          <Text style={[styles.label, { color: t.textSecondary, marginTop: 0, marginBottom: 0 }]}>
+            誰の予定？（複数選べます）
+          </Text>
           <Pressable onPress={() => setPeopleOpen(true)} hitSlop={8} accessibilityLabel="人を追加・編集">
             <Text style={{ color: t.accent, fontSize: 13, fontWeight: '600' }}>＋ 追加・編集</Text>
           </Pressable>
         </View>
-        {/* 選んでいる項目をもう一度押すと未指定 */}
-        <Chips
-          options={people.map((p) => ({ label: p.name, value: p.id as string | null, color: p.color }))}
-          value={memberId}
-          onChange={(v) => setMemberId(v === memberId ? null : v)}
-        />
+        {/* 複数選べる（押すたびに ✓ が付いたり外れたりする） */}
+        <View style={styles.chips}>
+          {people.map((p) => {
+            const active = memberIds.includes(p.id);
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => toggleMember(p.id)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: active }}
+                accessibilityLabel={`${p.name}${active ? '（選択中）' : ''}`}
+                style={[styles.chip, styles.checkChip, { borderColor: p.color }, active && { backgroundColor: p.color }]}>
+                <View style={[styles.checkbox, { borderColor: active ? '#fff' : p.color }, active && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                  {active && <Text style={styles.checkMark}>✓</Text>}
+                </View>
+                <Text style={{ color: active ? '#fff' : t.text, fontSize: 13 }}>{p.name}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
 
         <Text style={label}>公開範囲</Text>
@@ -563,7 +588,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 10,
-    borderLeftWidth: 5,
+    overflow: 'hidden',
     paddingRight: 8,
     minHeight: 48,
   },
@@ -584,7 +609,11 @@ const styles = StyleSheet.create({
   colorButtonAuto: { color: '#fff', fontSize: 11, fontWeight: '800' },
   iconButton: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 12, marginTop: 16, marginBottom: 6 },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 0 },
+  // 見出しと「＋ 追加・編集」を同じ高さに揃え、下の選択肢との間をあける
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 10 },
+  checkChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 8 },
+  checkbox: { width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  checkMark: { color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 13 },
   input: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   row: { flexDirection: 'row', gap: 8 },
   dateInput: { flex: 2, minWidth: 0 },

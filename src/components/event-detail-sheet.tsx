@@ -1,6 +1,7 @@
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { MemberBadge } from '@/components/member-badge';
+import { MemberBadges } from '@/components/member-badge';
+import { MemberStripe } from '@/components/member-stripe';
 import { useTheme } from '@/hooks/use-theme';
 import { eventLook } from '@/utils/event-look';
 import { formatDayLabel, formatTime, isSameDay } from '@/lib/date';
@@ -52,10 +53,16 @@ export function EventDetailSheet({
             <View
               style={[
                 styles.titleRow,
-                { backgroundColor: eventLook(o.color, o.event.all_day, t).bg, borderLeftColor: o.color },
+                { backgroundColor: eventLook(o.color, o.event.all_day, t).bg },
               ]}>
+              <MemberStripe
+                colors={o.event.color ? [] : o.members.map((m) => m.color)}
+                fallback={o.color}
+                width={6}
+                style={styles.titleStripe}
+              />
               {/* 誰の予定か：タイトルの先頭に小さく */}
-              <MemberBadge person={o.member} size="medium" outlined={o.event.all_day} />
+              <MemberBadges people={o.members} size="medium" outlined={o.event.all_day} max={4} />
               <Text style={[styles.title, { color: eventLook(o.color, o.event.all_day, t).text }]}>
                 {o.event.icon ? `${o.event.icon} ` : ''}
                 {o.event.title}
@@ -139,10 +146,11 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 14,
     borderRadius: 12,
-    borderLeftWidth: 5,
-    paddingHorizontal: 12,
+    overflow: 'hidden',
+    paddingRight: 12,
     paddingVertical: 10,
   },
+  titleStripe: { marginVertical: -10, marginRight: 4 },
   colorBar: { width: 5, borderRadius: 3 },
   title: { flex: 1, fontSize: 22, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 7 },

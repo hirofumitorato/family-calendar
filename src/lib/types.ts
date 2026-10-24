@@ -42,8 +42,8 @@ export type CalendarEvent = {
   exdates: string[];
   icon: string | null;
   remind_minutes_before: number[];
-  /** 誰の予定か（family_people.id。「みんな」も1項目）。null = 未指定 */
-  member_id: string | null;
+  /** 誰の予定か（family_people.id。複数可。「みんな」も1項目）。空 = 未指定 */
+  member_ids: string[];
   /** 自動で作った予定の出どころ（'kaiun' = 開運カレンダー）。手で作った予定は null/未指定 */
   source?: string | null;
   /** 予定の色。null/未指定なら「誰の予定か」の色 */
@@ -78,8 +78,8 @@ export type EventOccurrence = {
   key: string; // event.id + 開始時刻
   event: CalendarEvent;
   calendar: Calendar;
-  /** 誰の予定か（未指定なら null） */
-  member: Person | null;
+  /** 誰の予定か（選んだ順。未指定なら空） */
+  members: Person[];
   /** 表示色：予定の色 → 誰の予定かの色 → カレンダーの色 の順 */
   color: string;
   start: Date;
@@ -97,7 +97,7 @@ export type EventTemplate = {
   category: string | null;
   title: string;
   icon: string | null;
-  member_id: string | null;
+  member_ids: string[];
   calendar_id: string | null;
   all_day: boolean;
   start_time: string | null; // 'HH:mm'

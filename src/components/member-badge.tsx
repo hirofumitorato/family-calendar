@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+
 import { useTheme } from '@/hooks/use-theme';
 import type { Person } from '@/lib/types';
 
@@ -43,3 +44,35 @@ const styles = StyleSheet.create({
   textMedium: { fontSize: 12 },
   outlined: { borderWidth: 1, borderColor: '#fff' },
 });
+
+/** 複数人のバッジを縦に並べる（多いときは max 人まで＋「+n」） */
+export function MemberBadges({
+  people,
+  max = 3,
+  size = 'small',
+  outlined = false,
+  direction = 'column',
+}: {
+  people: Person[];
+  max?: number;
+  size?: 'small' | 'medium';
+  outlined?: boolean;
+  direction?: 'row' | 'column';
+}) {
+  const t = useTheme();
+  if (!people.length) return null;
+  const shown = people.length > max ? people.slice(0, max - 1) : people;
+  const rest = people.length - shown.length;
+  return (
+    <View style={{ flexDirection: direction, gap: 2, alignItems: direction === 'column' ? 'flex-start' : 'center' }}>
+      {shown.map((p) => (
+        <MemberBadge key={p.id} person={p} size={size} outlined={outlined} />
+      ))}
+      {rest > 0 && (
+        <Text style={{ fontSize: size === 'medium' ? 12 : 10, fontWeight: '700', color: outlined ? '#fff' : t.textSecondary }}>
+          +{rest}
+        </Text>
+      )}
+    </View>
+  );
+}

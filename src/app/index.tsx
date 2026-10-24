@@ -11,6 +11,7 @@ import { DeleteEventSheet } from '@/components/delete-event-sheet';
 import { EventDetailSheet } from '@/components/event-detail-sheet';
 import { deleteEventWithScope } from '@/data/delete-event';
 import { useTheme } from '@/hooks/use-theme';
+import { warekiYear } from '@/lib/wareki';
 import { addMonths, formatDayLabel, startOfDay, toDateKey } from '@/lib/date';
 import type { EventOccurrence } from '@/lib/types';
 import { useApp, useMonthData } from '@/state/app-store';
@@ -31,6 +32,9 @@ export default function CalendarScreen() {
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const data = useMonthData(year, month);
+  const wareki = warekiYear(year, month + 1, 1);
+  const now = new Date();
+  const isThisMonth = now.getFullYear() === year && now.getMonth() === month;
 
   // 月を切り替えたら、その月に今日があれば今日、なければ1日を選択する
   const move = (n: number) => {
@@ -60,18 +64,29 @@ export default function CalendarScreen() {
         <Pressable onPress={() => move(-1)} hitSlop={12} accessibilityLabel="前の月">
           <Text style={[styles.nav, { color: t.text }]}>‹</Text>
         </Pressable>
-        <Pressable onPress={goToday} accessibilityLabel="今日に戻る">
+        <View style={styles.titleBox}>
           <Text style={[styles.month, { color: t.text }]}>
             {year}年{month + 1}月
           </Text>
-        </Pressable>
+          {/* 和暦（その月の1日時点） */}
+          {wareki && <Text style={[styles.wareki, { color: t.textSecondary }]}>{wareki}</Text>}
+        </View>
         <Pressable onPress={() => move(1)} hitSlop={12} accessibilityLabel="次の月">
           <Text style={[styles.nav, { color: t.text }]}>›</Text>
         </Pressable>
-        <View style={{ flex: 1 }} />
-        <Pressable onPress={goToday} style={[styles.pill, { borderColor: t.border }]}>
-          <Text style={{ color: t.text, fontSize: 13 }}>今日</Text>
+        {/* どれだけ遠くの年月へ行っても、ここを押せば今日の月にすぐ戻れる */}
+        <Pressable
+          onPress={goToday}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="今日に戻る"
+          style={[
+            styles.todayBtn,
+            isThisMonth ? { borderColor: t.border } : { borderColor: t.accent, backgroundColor: t.accent },
+          ]}>
+          <Text style={{ color: isThisMonth ? t.textSecondary : '#fff', fontSize: 12, fontWeight: '700' }}>今日</Text>
         </Pressable>
+        <View style={{ flex: 1 }} />
         <Pressable onPress={() => router.push('/settings')} hitSlop={8} accessibilityLabel="設定">
           <Text style={styles.gear}>⚙️</Text>
         </Pressable>
@@ -157,6 +172,9 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  titleBox: { alignItems: 'center', minWidth: 112 },
+  wareki: { fontSize: 11, marginTop: -2 },
+  todayBtn: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 4 },
   nav: { fontSize: 28, lineHeight: 30, paddingHorizontal: 4 },
   month: { fontSize: 20, fontWeight: '700' },

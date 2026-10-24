@@ -83,7 +83,7 @@ export function KaiunSheet({ visible, onClose }: { visible: boolean; onClose: ()
           calendar_id: calendar.id,
           title: k.title,
           icon: '🌟',
-          member_id: personId,
+          member_ids: [personId],
           all_day: true,
           starts_at: s.toISOString(),
           ends_at: e.toISOString(),

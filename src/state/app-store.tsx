@@ -164,13 +164,15 @@ export function useMonthData(year: number, month: number): MonthData {
               if (d < from) continue;
               const k = toDateKey(d);
               const list = occurrencesByDay.get(k) ?? [];
-              const member = event.member_id ? memberById.get(event.member_id) ?? null : null;
+              const members = (event.member_ids ?? [])
+                .map((id) => memberById.get(id))
+                .filter((m): m is NonNullable<typeof m> => Boolean(m));
               list.push({
                 key: `${event.id}@${start.toISOString()}`,
                 event,
                 calendar,
-                member,
-                color: event.color ?? member?.color ?? calendar.color,
+                members,
+                color: event.color ?? members[0]?.color ?? calendar.color,
                 start,
                 end,
               });

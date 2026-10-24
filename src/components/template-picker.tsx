@@ -51,10 +51,10 @@ export function TemplatePicker({
   const inGenre = templates.filter(
     (tpl) => genre === ALL || (tpl.category?.trim() || UNCATEGORIZED) === genre,
   );
-  const personOf = (id: string | null) => (id ? people.find((p) => p.id === id) : undefined);
+  const personOf = (id: string) => people.find((p) => p.id === id);
   const subtitle = (tpl: EventTemplate) =>
     [
-      personOf(tpl.member_id)?.name,
+      tpl.member_ids.map((id) => personOf(id)?.name).filter(Boolean).join('・'),
       tpl.rrule ? describeRepeat(tpl.rrule) : null,
       tpl.all_day ? '終日' : tpl.start_time,
     ]
@@ -110,7 +110,7 @@ export function TemplatePicker({
           <Text style={{ color: t.textMuted, paddingVertical: 12 }}>このジャンルのテンプレートはありません</Text>
         )}
         {inGenre.map((tpl) => {
-          const color = personOf(tpl.member_id)?.color;
+          const color = tpl.member_ids.map((id) => personOf(id)?.color).find(Boolean);
           return (
             <View
               key={tpl.id}

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { KaiunSheet } from '@/components/kaiun-sheet';
-import { MemberBadge } from '@/components/member-badge';
+import { MemberBadges } from '@/components/member-badge';
+import { MemberStripe } from '@/components/member-stripe';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabel, formatTime, isSameDay, parseDateKey, toDateKey } from '@/lib/date';
 import { getHolidayName } from '@/lib/holidays';
@@ -134,10 +135,15 @@ export function DayDetail({
             accessibilityLabel={`${o.event.title} の内容を見る`}
             onPress={() => onPressEvent(o)}
             style={({ pressed }) => [styles.event, { backgroundColor: look.bg, opacity: pressed ? 0.7 : 1 }]}>
-            <View style={[styles.colorBar, { backgroundColor: look.bar }]} />
+            {/* 左端の帯：選ばれた人の色で分割（予定の色を指定していればその色） */}
+            <MemberStripe
+              colors={o.event.color ? [] : o.members.map((m) => m.color)}
+              fallback={look.bar}
+              width={6}
+            />
             {/* 誰の予定か：先頭に小さく */}
             <View style={styles.badgeCol}>
-              <MemberBadge person={o.member} outlined={look.solid} />
+              <MemberBadges people={o.members} outlined={look.solid} />
             </View>
             <View style={styles.eventBody}>
               <Text style={[styles.eventTitle, { color: look.text }]} numberOfLines={1}>

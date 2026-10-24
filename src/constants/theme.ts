@@ -11,8 +11,8 @@ export const Colors = {
     selected: '#FFE0C7',
     sunday: '#E5484D',
     saturday: '#2F6FEB',
-    sundayBg: '#FFF0F0',
-    saturdayBg: '#EEF4FF',
+    sundayBg: '#FFE3E3',
+    saturdayBg: '#E1ECFF',
   },
   dark: {
     text: '#F2F2F4',
@@ -26,8 +26,8 @@ export const Colors = {
     selected: '#3D2817',
     sunday: '#FF6B6F',
     saturday: '#6A9BFF',
-    sundayBg: '#2A1517',
-    saturdayBg: '#141E30',
+    sundayBg: '#43202A',
+    saturdayBg: '#1C2E52',
   },
 } as const;
 

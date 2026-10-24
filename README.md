@@ -59,6 +59,22 @@ npx expo start
 
    本番では service_role キーを SQL に直書きせず、Vault（`vault.decrypted_secrets`）から読むのがおすすめです。
 
+## 家族のスマホにインストールする（EAS Build）
+
+`preview` プロフィールは家族の端末に直接入れる用（Android は APK、iPhone は登録した端末だけに入る Ad Hoc）。
+
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest init                                   # app.json に projectId が入る
+npx eas-cli@latest env:push --environment preview --path .env   # Supabase の URL / キーを EAS へ
+npx eas-cli@latest build -p android --profile preview     # Android（APK）
+npx eas-cli@latest device:create                          # iPhone を登録（端末ごと）
+npx eas-cli@latest build -p ios --profile preview         # iPhone（Apple Developer Program が必要）
+```
+
+ビルドが終わると表示される URL / QR コードをスマホで開くとインストールできます。
+JS だけの修正は `npx eas-cli@latest update --channel preview` で配信できるようにする予定（expo-updates の導入が必要）。
+
 ## 構成
 
 ```

@@ -9,6 +9,7 @@ import { SwipePager } from '@/components/swipe-pager';
 import { StickerPicker } from '@/components/sticker-picker';
 import { DayColorPicker } from '@/components/day-color-picker';
 import { DeleteEventSheet } from '@/components/delete-event-sheet';
+import { EventDetailSheet } from '@/components/event-detail-sheet';
 import { deleteEventWithScope } from '@/data/delete-event';
 import { DAY_STICKER_GROUPS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
@@ -25,6 +26,10 @@ export default function CalendarScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [colorTarget, setColorTarget] = useState<Date | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EventOccurrence | null>(null);
+  const [viewTarget, setViewTarget] = useState<EventOccurrence | null>(null);
+
+  const openEditor = (o: EventOccurrence) =>
+    router.push({ pathname: '/event/[id]', params: { id: o.event.id, occurrence: o.start.toISOString() } });
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -107,12 +112,8 @@ export default function CalendarScreen() {
         <DayDetail
           date={selected}
           data={data}
-          onPressEvent={(o) =>
-            router.push({
-              pathname: '/event/[id]',
-              params: { id: o.event.id, occurrence: o.start.toISOString() },
-            })
-          }
+          onPressEvent={setViewTarget}
+          onEditEvent={openEditor}
           onDeleteEvent={setDeleteTarget}
           onAddSticker={() => setPickerOpen(true)}
           onRemoveSticker={async (s) => {
@@ -128,6 +129,19 @@ export default function CalendarScreen() {
         style={[styles.fab, { backgroundColor: t.accent }]}>
         <Text style={styles.fabText}>＋</Text>
       </Pressable>
+
+      <EventDetailSheet
+        occurrence={viewTarget}
+        onClose={() => setViewTarget(null)}
+        onEdit={(o) => {
+          setViewTarget(null);
+          openEditor(o);
+        }}
+        onDelete={(o) => {
+          setViewTarget(null);
+          setDeleteTarget(o);
+        }}
+      />
 
       <DeleteEventSheet
         target={deleteTarget && { event: deleteTarget.event, occurrenceStart: deleteTarget.start }}

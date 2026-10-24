@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MemberBadge } from '@/components/member-badge';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabel, formatTime, isSameDay, toDateKey } from '@/lib/date';
 import { getHolidayName } from '@/lib/holidays';
@@ -12,13 +13,16 @@ export function DayDetail({
   date,
   data,
   onPressEvent,
+  onEditEvent,
   onDeleteEvent,
   onAddSticker,
   onRemoveSticker,
 }: {
   date: Date;
   data: MonthData;
+  /** タップ：内容を見る */
   onPressEvent: (o: EventOccurrence) => void;
+  onEditEvent: (o: EventOccurrence) => void;
   onDeleteEvent: (o: EventOccurrence) => void;
   onAddSticker: () => void;
   onRemoveSticker: (s: DaySticker) => void;
@@ -85,27 +89,41 @@ export function DayDetail({
         occs.map((o) => (
           <Pressable
             key={o.key}
+            accessibilityLabel={`${o.event.title} の内容を見る`}
             onPress={() => onPressEvent(o)}
             style={({ pressed }) => [
               styles.event,
               { backgroundColor: pressed ? t.selected : t.backgroundElement },
             ]}>
             <View style={[styles.colorBar, { backgroundColor: o.color }]} />
-            <Text style={[styles.eventTime, { color: t.textSecondary }]}>{timeLabel(o)}</Text>
-            <Text style={[styles.eventTitle, { color: t.text }]} numberOfLines={1}>
-              {o.event.icon ? `${o.event.icon} ` : ''}
-              {o.event.title}
-            </Text>
-            <Text style={[styles.calName, { color: o.member ? o.member.color : t.textSecondary }]} numberOfLines={1}>
-              {o.member ? o.member.name : 'みんな'}
-              {o.calendar.visibility === 'personal' ? ' 🔒' : ''}
-            </Text>
+            {/* 誰の予定か：先頭に小さく */}
+            <View style={styles.badgeCol}>
+              <MemberBadge person={o.member} />
+            </View>
+            <View style={styles.eventBody}>
+              <Text style={[styles.eventTitle, { color: t.text }]} numberOfLines={1}>
+                {o.event.icon ? `${o.event.icon} ` : ''}
+                {o.event.title}
+              </Text>
+              <Text style={[styles.eventTime, { color: t.textSecondary }]} numberOfLines={1}>
+                {timeLabel(o)}
+                {o.event.location ? `  📍${o.event.location}` : ''}
+                {o.calendar.visibility === 'personal' ? '  🔒' : ''}
+              </Text>
+            </View>
             <Pressable
-              hitSlop={8}
+              hitSlop={6}
+              accessibilityLabel={`${o.event.title} を編集`}
+              onPress={() => onEditEvent(o)}
+              style={styles.rowButton}>
+              <Text style={{ color: t.accent, fontSize: 13, fontWeight: '600' }}>編集</Text>
+            </Pressable>
+            <Pressable
+              hitSlop={6}
               accessibilityLabel={`${o.event.title} を削除`}
               onPress={() => onDeleteEvent(o)}
-              style={styles.deleteButton}>
-              <Text style={{ color: t.sunday, fontSize: 13 }}>削除</Text>
+              style={[styles.rowButton, { paddingRight: 12 }]}>
+              <Text style={{ color: t.sunday, fontSize: 13, fontWeight: '600' }}>削除</Text>
             </Pressable>
           </Pressable>
         ))
@@ -126,11 +144,12 @@ const styles = StyleSheet.create({
   sticker: { fontSize: 24 },
   addSticker: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
   empty: { fontSize: 14, paddingVertical: 8 },
-  event: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, overflow: 'hidden', minHeight: 44 },
+  event: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, overflow: 'hidden', minHeight: 56 },
   colorBar: { width: 4, alignSelf: 'stretch' },
-  eventTime: { width: 92, fontSize: 12, paddingLeft: 10 },
-  eventTitle: { flex: 1, fontSize: 15 },
-  calName: { paddingHorizontal: 6, fontSize: 12, fontWeight: '600', maxWidth: 96 },
-  deleteButton: { paddingHorizontal: 12, alignSelf: 'stretch', justifyContent: 'center' },
+  badgeCol: { paddingLeft: 8, alignSelf: 'center' },
+  eventBody: { flex: 1, paddingLeft: 8, paddingVertical: 8, gap: 3 },
+  eventTitle: { fontSize: 15, fontWeight: '600' },
+  eventTime: { fontSize: 12 },
+  rowButton: { paddingHorizontal: 8, alignSelf: 'stretch', justifyContent: 'center' },
   hint: { fontSize: 11 },
 });

@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { ColorPalette } from '@/components/color-palette';
+import { ColorPopover } from '@/components/color-popover';
 import { DateTimeRow, type PickerOpen } from '@/components/date-time-picker';
 import { GenreSheet } from '@/components/genre-sheet';
 import { PeopleSheet } from '@/components/people-sheet';
@@ -119,6 +119,7 @@ export function EventForm(props: Props) {
   // 開いている日付・時刻のピッカー（同時に開くのは1つだけ）
   const [openPicker, setOpenPicker] = useState<{ row: 'start' | 'end'; kind: PickerOpen } | null>(null);
   const [genreSheet, setGenreSheet] = useState(false);
+  const [colorOpen, setColorOpen] = useState(false);
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [iconPicker, setIconPicker] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
@@ -251,6 +252,11 @@ export function EventForm(props: Props) {
     }
   };
 
+  // カレンダーに表示される色（予定の色 → 誰の予定かの色 → カレンダーの色）
+  const autoColor =
+    people.find((p) => p.id === memberId)?.color ?? calendars.find((c) => c.id === calendarId)?.color ?? t.accent;
+  const shownColor = color ?? autoColor;
+
   const input = [styles.input, { color: t.text, backgroundColor: t.backgroundElement }];
   const label = [styles.label, { color: t.textSecondary }];
   const picker =
@@ -326,15 +332,29 @@ export function EventForm(props: Props) {
             style={[styles.iconButton, { backgroundColor: t.backgroundElement }]}>
             <Text style={{ fontSize: 24 }}>{icon ?? '🙂'}</Text>
           </Pressable>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            onFocus={kb.focus('title')}
-            placeholder={isTemplate ? 'テンプレート名（予定のタイトル）' : 'タイトル'}
-            placeholderTextColor={t.textMuted}
-            style={[...input, { flex: 1, fontSize: 18 }]}
-            returnKeyType="done"
-          />
+          {/* タイトル欄はカレンダーでの見え方と同じ色（終日＝濃い色、時間指定＝淡い色） */}
+          <View
+            style={[
+              styles.titleBox,
+              { backgroundColor: allDay ? shownColor : `${shownColor}33`, borderLeftColor: shownColor },
+            ]}>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              onFocus={kb.focus('title')}
+              placeholder={isTemplate ? 'テンプレート名（予定のタイトル）' : 'タイトル'}
+              placeholderTextColor={allDay ? 'rgba(255,255,255,0.75)' : t.textMuted}
+              style={[styles.titleInput, { color: allDay ? '#fff' : t.text }]}
+              returnKeyType="done"
+            />
+            <Pressable
+              onPress={() => setColorOpen(true)}
+              hitSlop={8}
+              accessibilityLabel={`予定の色を選ぶ（${color ? color : '自動'}）`}
+              style={[styles.colorButton, { backgroundColor: shownColor, borderColor: allDay ? '#fff' : t.background }]}>
+              {color === null && <Text style={styles.colorButtonAuto}>A</Text>}
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.labelRow}>
@@ -352,8 +372,6 @@ export function EventForm(props: Props) {
           onChange={(v) => setMemberId(v === EVERYONE ? null : v)}
         />
 
-        <Text style={label}>予定の色（自動＝誰の予定かの色）</Text>
-        <ColorPalette value={color} onChange={setColor} allowNone noneLabel="自動" size={28} />
 
         <Text style={label}>公開範囲</Text>
         <Chips
@@ -489,6 +507,13 @@ export function EventForm(props: Props) {
       />
       <PeopleSheet visible={peopleOpen} onClose={() => setPeopleOpen(false)} />
       <GenreSheet visible={genreSheet} onClose={() => setGenreSheet(false)} />
+      <ColorPopover
+        visible={colorOpen}
+        value={color}
+        autoColor={autoColor}
+        onChange={setColor}
+        onClose={() => setColorOpen(false)}
+      />
     </View>
   );
 }
@@ -531,6 +556,31 @@ const styles = StyleSheet.create({
   root: { padding: 16, paddingBottom: 48 },
   headerSave: { fontSize: 17, fontWeight: '700', paddingHorizontal: 4 },
   titleRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  titleBox: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    borderLeftWidth: 5,
+    paddingRight: 8,
+    minHeight: 48,
+  },
+  titleInput: { flex: 1, minWidth: 0, fontSize: 18, fontWeight: '600', paddingHorizontal: 10, paddingVertical: 10 },
+  colorButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  colorButtonAuto: { color: '#fff', fontSize: 11, fontWeight: '800' },
   iconButton: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 12, marginTop: 16, marginBottom: 6 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 0 },

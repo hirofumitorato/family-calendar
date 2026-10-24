@@ -31,7 +31,7 @@ export function PeopleSheet({ visible, onClose }: { visible: boolean; onClose: (
   const startNew = () => {
     const used = new Set(people.map((p) => p.color));
     // まだ誰も使っていない色を、ピンク・青・緑…の順に提案する
-    const suggest = ['#EC4899', '#3B82F6', '#22C55E', '#F97316', '#8B5CF6', '#06B6D4', '#EAB308', ...PALETTE];
+    const suggest = ['#EC407A', '#1E88E5', '#7CB342', '#FB8C00', '#9575CD', '#4FC3F7', '#F9A825', ...PALETTE];
     const color = suggest.find((c) => !used.has(c)) ?? PALETTE[0];
     setEditing({ id: null, name: '', color });
   };

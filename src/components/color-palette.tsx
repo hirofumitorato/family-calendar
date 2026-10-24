@@ -43,7 +43,8 @@ export function ColorPalette({
             accessibilityState={{ selected: active }}
             onPress={() => onChange(c)}
             style={[
-              { width: size, height: size, borderRadius: size / 2, backgroundColor: c },
+              // 黒・白に近い色も背景に埋もれないよう、うすい枠をつける
+              { width: size, height: size, borderRadius: size / 2, backgroundColor: c, borderWidth: 1, borderColor: t.border },
               active && [styles.active, { borderColor: t.background, outlineColor: c, outlineWidth: 2, outlineStyle: 'solid' }],
             ]}>
             {active && <Text style={styles.check}>✓</Text>}

@@ -1,6 +1,13 @@
 import type { CalendarRepository, FamilyContext } from '@/data/repository';
 import { addDays, startOfDay, toDateKey } from '@/lib/date';
-import type { CalendarEvent, DayColor, DaySticker, NewCalendarEvent, WeatherDaily } from '@/lib/types';
+import type {
+  CalendarEvent,
+  DayColor,
+  DaySticker,
+  EventTemplate,
+  NewCalendarEvent,
+  WeatherDaily,
+} from '@/lib/types';
 
 // Supabase 未設定でも画面を確認できるよう、端末メモリ上で動くデモ実装。
 // アプリを再起動するとデータは初期状態に戻る。
@@ -9,6 +16,8 @@ const ME = 'demo-me';
 const FAMILY_ID = 'demo-family';
 const FAMILY_CAL = 'demo-cal-family';
 const MY_CAL = 'demo-cal-me';
+const PARTNER = 'demo-2';
+const KID = 'demo-3';
 
 function at(base: Date, dayOffset: number, h: number, m = 0): Date {
   const d = addDays(startOfDay(base), dayOffset);
@@ -38,6 +47,7 @@ function seedEvents(): CalendarEvent[] {
     exdates: [],
     icon: null,
     remind_minutes_before: [],
+    member_id: null,
     ...extra,
   });
 
@@ -53,11 +63,19 @@ function seedEvents(): CalendarEvent[] {
     }),
     ev('e3', FAMILY_CAL, '家族で温泉', at(today, 9, 10), at(today, 10, 17), { icon: '♨️' }),
     ev('e4', MY_CAL, '歯医者', at(today, 1, 15), at(today, 1, 16), {
+      member_id: ME,
       icon: '🦷',
       remind_minutes_before: [60],
     }),
-    ev('e5', MY_CAL, '打ち合わせ', at(today, 2, 13), at(today, 2, 14), { icon: '💼' }),
+    ev('e5', MY_CAL, '打ち合わせ', at(today, 2, 13), at(today, 2, 14), { icon: '💼', member_id: ME }),
+    ev('e7', FAMILY_CAL, 'ピアノ', at(today, 1, 17), at(today, 1, 18), {
+      icon: '🎹',
+      member_id: KID,
+      rrule: 'FREQ=WEEKLY;BYDAY=' + ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][addDays(today, 1).getDay()],
+    }),
+    ev('e8', FAMILY_CAL, 'ヨガ', at(today, 4, 10), at(today, 4, 11), { icon: '🧘', member_id: PARTNER }),
     ev('e6', MY_CAL, 'ジム', at(today, -1, 19), at(today, -1, 20), {
+      member_id: ME,
       icon: '🏃',
       rrule: 'FREQ=WEEKLY;BYDAY=WE,SA',
     }),
@@ -71,6 +89,38 @@ export function createDemoRepository(): CalendarRepository {
     { id: 's2', calendar_id: FAMILY_CAL, date: toDateKey(addDays(new Date(), 5)), sticker: '⭐' },
   ];
   let dayColors: DayColor[] = [];
+  let templates: EventTemplate[] = [
+    {
+      id: 't1',
+      family_id: FAMILY_ID,
+      title: '燃えるゴミ',
+      icon: '🗑️',
+      member_id: null,
+      calendar_id: FAMILY_CAL,
+      all_day: false,
+      start_time: '08:00',
+      end_time: '08:30',
+      rrule: 'FREQ=WEEKLY;BYDAY=MO,TH',
+      remind_minutes_before: [],
+      location: null,
+      memo: null,
+    },
+    {
+      id: 't2',
+      family_id: FAMILY_ID,
+      title: 'スイミング',
+      icon: '🏊',
+      member_id: KID,
+      calendar_id: FAMILY_CAL,
+      all_day: false,
+      start_time: '16:00',
+      end_time: '17:00',
+      rrule: 'FREQ=WEEKLY;BYDAY=WE',
+      remind_minutes_before: [60],
+      location: '市民プール',
+      memo: null,
+    },
+  ];
   let seq = 100;
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((l) => l());
@@ -87,7 +137,8 @@ export function createDemoRepository(): CalendarRepository {
     },
     members: [
       { family_id: FAMILY_ID, user_id: ME, display_name: 'わたし', color: '#3B82F6', role: 'owner' },
-      { family_id: FAMILY_ID, user_id: 'demo-2', display_name: 'パートナー', color: '#EC4899', role: 'member' },
+      { family_id: FAMILY_ID, user_id: PARTNER, display_name: 'パートナー', color: '#EC4899', role: 'member' },
+      { family_id: FAMILY_ID, user_id: KID, display_name: 'こども', color: '#10B981', role: 'member' },
     ],
     calendars: [
       { id: FAMILY_CAL, family_id: FAMILY_ID, owner_id: null, name: '家族', color: '#F97316', visibility: 'family' },
@@ -156,6 +207,18 @@ export function createDemoRepository(): CalendarRepository {
       dayColors = dayColors.filter((c) => !(c.calendar_id === calendarId && c.date === date));
       if (color) dayColors = [...dayColors, { calendar_id: calendarId, date, color }];
       notify();
+    },
+
+    async listTemplates() {
+      return templates;
+    },
+    async createTemplate(input) {
+      const created = { ...input, id: `t${seq++}` };
+      templates = [...templates, created];
+      return created;
+    },
+    async deleteTemplate(id) {
+      templates = templates.filter((t) => t.id !== id);
     },
 
     async listWeather(_familyId, fromKey, toKey) {

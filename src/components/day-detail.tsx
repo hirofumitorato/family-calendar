@@ -90,14 +90,15 @@ export function DayDetail({
               styles.event,
               { backgroundColor: pressed ? t.selected : t.backgroundElement },
             ]}>
-            <View style={[styles.colorBar, { backgroundColor: o.calendar.color }]} />
+            <View style={[styles.colorBar, { backgroundColor: o.color }]} />
             <Text style={[styles.eventTime, { color: t.textSecondary }]}>{timeLabel(o)}</Text>
             <Text style={[styles.eventTitle, { color: t.text }]} numberOfLines={1}>
               {o.event.icon ? `${o.event.icon} ` : ''}
               {o.event.title}
             </Text>
-            <Text style={[styles.calName, { color: t.textSecondary }]}>
-              {o.calendar.visibility === 'personal' ? '🔒' : '👪'}
+            <Text style={[styles.calName, { color: o.member ? o.member.color : t.textSecondary }]} numberOfLines={1}>
+              {o.member ? o.member.display_name : 'みんな'}
+              {o.calendar.visibility === 'personal' ? ' 🔒' : ''}
             </Text>
             <Pressable
               hitSlop={8}
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
   colorBar: { width: 4, alignSelf: 'stretch' },
   eventTime: { width: 92, fontSize: 12, paddingLeft: 10 },
   eventTitle: { flex: 1, fontSize: 15 },
-  calName: { paddingHorizontal: 6, fontSize: 12 },
+  calName: { paddingHorizontal: 6, fontSize: 12, fontWeight: '600', maxWidth: 96 },
   deleteButton: { paddingHorizontal: 12, alignSelf: 'stretch', justifyContent: 'center' },
   hint: { fontSize: 11 },
 });

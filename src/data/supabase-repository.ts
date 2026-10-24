@@ -6,6 +6,7 @@ import type {
   CalendarEvent,
   DayColor,
   DaySticker,
+  EventTemplate,
   Family,
   FamilyMember,
   WeatherDaily,
@@ -138,6 +139,25 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
             { onConflict: 'calendar_id,date' },
           ),
       );
+    },
+
+    async listTemplates(familyId) {
+      return check<EventTemplate[]>(
+        await sb.from('event_templates').select('*').eq('family_id', familyId).order('created_at'),
+      );
+    },
+    async createTemplate(template) {
+      const { data: auth } = await sb.auth.getUser();
+      return check<EventTemplate>(
+        await sb
+          .from('event_templates')
+          .insert({ ...template, created_by: auth.user?.id })
+          .select('*')
+          .single(),
+      );
+    },
+    async deleteTemplate(id) {
+      check(await sb.from('event_templates').delete().eq('id', id));
     },
 
     async listWeather(familyId, fromKey, toKey) {

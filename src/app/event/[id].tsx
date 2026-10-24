@@ -5,6 +5,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { DeleteEventSheet } from '@/components/delete-event-sheet';
 import { EventForm } from '@/components/event-form';
 import { deleteEventWithScope } from '@/data/delete-event';
+import { useTemplates } from '@/hooks/use-templates';
 import { toDateKey } from '@/lib/date';
 import type { CalendarEvent } from '@/lib/types';
 import { useApp } from '@/state/app-store';
@@ -16,6 +17,7 @@ export default function EditEventScreen() {
   const { repo, ctx, bumpRevision } = useApp();
   const [event, setEvent] = useState<CalendarEvent | null | undefined>(undefined);
   const [deleting, setDeleting] = useState(false);
+  const { save: saveTemplate } = useTemplates();
 
   useEffect(() => {
     repo.getEvent(id).then(setEvent);
@@ -42,7 +44,9 @@ export default function EditEventScreen() {
     <>
       <EventForm
         calendars={ctx?.calendars ?? []}
+        members={ctx?.members ?? []}
         initial={event}
+        onSaveTemplate={saveTemplate}
         defaultDate={toDateKey(new Date(event.starts_at))}
         onSubmit={async (value) => {
           await repo.updateEvent(event.id, value);

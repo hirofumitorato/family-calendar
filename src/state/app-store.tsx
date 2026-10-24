@@ -134,6 +134,7 @@ export function useMonthData(year: number, month: number): MonthData {
     const toKey = toDateKey(addDays(to, -1));
     const calendarIds = visibleCalendars.map((c) => c.id);
     const calendarById = new Map(visibleCalendars.map((c) => [c.id, c]));
+    const memberById = new Map(ctx.members.map((m) => [m.user_id, m]));
 
     setLoading(true);
     Promise.all([
@@ -163,7 +164,16 @@ export function useMonthData(year: number, month: number): MonthData {
               if (d < from) continue;
               const k = toDateKey(d);
               const list = occurrencesByDay.get(k) ?? [];
-              list.push({ key: `${event.id}@${start.toISOString()}`, event, calendar, start, end });
+              const member = event.member_id ? memberById.get(event.member_id) ?? null : null;
+              list.push({
+                key: `${event.id}@${start.toISOString()}`,
+                event,
+                calendar,
+                member,
+                color: member?.color ?? calendar.color,
+                start,
+                end,
+              });
               occurrencesByDay.set(k, list);
             }
           }

@@ -115,7 +115,16 @@ const DayCell = memo(function DayCell({
       style={[
         styles.cell,
         { borderColor: t.border },
-        cellColor ? { backgroundColor: dayColorFill(cellColor) } : isToday && { backgroundColor: t.today },
+        // 優先順位：長押しで付けた色 ＞ 今日 ＞ 日曜（薄い赤）・土曜（薄い青）
+        cellColor
+          ? { backgroundColor: dayColorFill(cellColor) }
+          : isToday
+            ? { backgroundColor: t.today }
+            : dow === 0
+              ? { backgroundColor: t.sundayBg }
+              : dow === 6
+                ? { backgroundColor: t.saturdayBg }
+                : null,
       ]}>
       {isSelected && <View pointerEvents="none" style={[styles.selectedRing, { borderColor: t.accent }]} />}
       <View style={styles.cellHeader}>
@@ -143,8 +152,8 @@ const DayCell = memo(function DayCell({
           style={[
             styles.chip,
             o.event.all_day
-              ? { backgroundColor: o.calendar.color }
-              : { borderLeftColor: o.calendar.color, borderLeftWidth: 2 },
+              ? { backgroundColor: o.color }
+              : { borderLeftColor: o.color, borderLeftWidth: 2 },
           ]}>
           <Text
             numberOfLines={1}

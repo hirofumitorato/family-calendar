@@ -3,9 +3,11 @@ import type {
   CalendarEvent,
   DayColor,
   DaySticker,
+  EventTemplate,
   Family,
   FamilyMember,
   NewCalendarEvent,
+  NewEventTemplate,
   WeatherDaily,
 } from '@/lib/types';
 
@@ -51,6 +53,11 @@ export interface CalendarRepository {
   listDayColors(calendarIds: string[], fromKey: string, toKey: string): Promise<DayColor[]>;
   /** color = null で解除 */
   setDayColor(calendarId: string, date: string, color: string | null): Promise<void>;
+
+  /** 予定テンプレート（家族で共有） */
+  listTemplates(familyId: string): Promise<EventTemplate[]>;
+  createTemplate(template: NewEventTemplate): Promise<EventTemplate>;
+  deleteTemplate(id: string): Promise<void>;
 
   listWeather(familyId: string, fromKey: string, toKey: string): Promise<WeatherDaily[]>;
 

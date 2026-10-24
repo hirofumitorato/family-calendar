@@ -42,6 +42,8 @@ export type CalendarEvent = {
   exdates: string[];
   icon: string | null;
   remind_minutes_before: number[];
+  /** 誰の予定か（family_members.user_id）。null = 家族みんな */
+  member_id: string | null;
 };
 
 export type NewCalendarEvent = Omit<CalendarEvent, 'id'>;
@@ -72,9 +74,32 @@ export type EventOccurrence = {
   key: string; // event.id + 開始時刻
   event: CalendarEvent;
   calendar: Calendar;
+  /** 誰の予定か（未指定なら null = みんな） */
+  member: FamilyMember | null;
+  /** 表示色：メンバーの色、なければカレンダーの色 */
+  color: string;
   start: Date;
   end: Date;
 };
 
 /** 繰り返し予定の削除範囲 */
 export type DeleteScope = 'this' | 'following' | 'all';
+
+/** 予定テンプレート：繰り返し発生する「誰の・どんな予定か」 */
+export type EventTemplate = {
+  id: string;
+  family_id: string;
+  title: string;
+  icon: string | null;
+  member_id: string | null;
+  calendar_id: string | null;
+  all_day: boolean;
+  start_time: string | null; // 'HH:mm'
+  end_time: string | null;
+  rrule: string | null;
+  remind_minutes_before: number[];
+  location: string | null;
+  memo: string | null;
+};
+
+export type NewEventTemplate = Omit<EventTemplate, 'id'>;

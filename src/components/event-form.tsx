@@ -1,3 +1,4 @@
+import { Stack } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -14,17 +15,25 @@ import {
 import { StickerPicker } from '@/components/sticker-picker';
 import { EVENT_ICON_GROUPS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
-import { formatTime, parseDateKey, parseTime, toDateKey } from '@/lib/date';
-import type { Calendar, CalendarEvent, NewCalendarEvent } from '@/lib/types';
-import { notify } from '@/utils/dialog';
+import { WEEKDAY_LABELS, formatTime, parseDateKey, parseTime, toDateKey } from '@/lib/date';
+import { buildRepeat, describeRepeat, parseRepeat, type RepeatFreq } from '@/lib/repeat';
+import type {
+  Calendar,
+  CalendarEvent,
+  EventTemplate,
+  FamilyMember,
+  NewCalendarEvent,
+  NewEventTemplate,
+} from '@/lib/types';
+import { confirm, notify } from '@/utils/dialog';
 
-const REPEATS = [
+const REPEATS: { label: string; value: RepeatFreq | null }[] = [
   { label: 'なし', value: null },
-  { label: '毎日', value: 'FREQ=DAILY' },
-  { label: '毎週', value: 'FREQ=WEEKLY' },
-  { label: '毎月', value: 'FREQ=MONTHLY' },
-  { label: '毎年', value: 'FREQ=YEARLY' },
-] as const;
+  { label: '毎日', value: 'DAILY' },
+  { label: '毎週', value: 'WEEKLY' },
+  { label: '毎月', value: 'MONTHLY' },
+  { label: '毎年', value: 'YEARLY' },
+];
 
 const REMINDERS = [
   { label: 'なし', value: [] as number[] },
@@ -34,43 +43,89 @@ const REMINDERS = [
 ];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const EVERYONE = '__everyone__';
 
 export function EventForm({
   calendars,
+  members,
   initial,
   defaultCalendarId,
   defaultDate,
+  templates = [],
   onSubmit,
   onDelete,
+  onSaveTemplate,
+  onDeleteTemplate,
 }: {
   calendars: Calendar[];
+  members: FamilyMember[];
   initial?: CalendarEvent;
   defaultCalendarId?: string;
   defaultDate: string;
+  /** 予定テンプレート（タップでフォームに反映） */
+  templates?: EventTemplate[];
   onSubmit: (value: NewCalendarEvent) => Promise<void>;
   /** 削除ボタン。確認（範囲選択）は呼び出し側で行う */
   onDelete?: () => void;
+  /** 「テンプレートに保存」がオンのとき、保存時に呼ばれる */
+  onSaveTemplate?: (template: Omit<NewEventTemplate, 'family_id'>) => Promise<void>;
+  onDeleteTemplate?: (template: EventTemplate) => Promise<void>;
 }) {
   const t = useTheme();
   const initStart = initial ? new Date(initial.starts_at) : parseDateKey(defaultDate);
   const initEnd = initial ? new Date(initial.ends_at) : parseDateKey(defaultDate);
+  const initRepeat = parseRepeat(initial?.rrule);
 
   const [title, setTitle] = useState(initial?.title ?? '');
   const [icon, setIcon] = useState<string | null>(initial?.icon ?? null);
+  const [memberId, setMemberId] = useState<string | null>(initial?.member_id ?? null);
   const [calendarId, setCalendarId] = useState(initial?.calendar_id ?? defaultCalendarId ?? calendars[0]?.id);
   const [allDay, setAllDay] = useState(initial?.all_day ?? false);
   const [startDate, setStartDate] = useState(toDateKey(initStart));
   const [endDate, setEndDate] = useState(toDateKey(initEnd));
   const [startTime, setStartTime] = useState(initial ? formatTime(initStart) : '10:00');
   const [endTime, setEndTime] = useState(initial ? formatTime(initEnd) : '11:00');
-  const [rrule, setRrule] = useState<string | null>(initial?.rrule ?? null);
+  const [freq, setFreq] = useState<RepeatFreq | null>(initRepeat.freq);
+  const [byDay, setByDay] = useState<number[]>(initRepeat.byDay);
   const [remind, setRemind] = useState<number[]>(initial?.remind_minutes_before ?? []);
   const [location, setLocation] = useState(initial?.location ?? '');
   const [memo, setMemo] = useState(initial?.memo ?? '');
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [iconPicker, setIconPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const startWeekday = DATE_RE.test(startDate) ? parseDateKey(startDate).getDay() : new Date().getDay();
+  const rrule = buildRepeat(
+    { freq, byDay: freq === 'WEEKLY' && byDay.length === 0 ? [startWeekday] : byDay },
+    initial?.rrule,
+  );
+
+  const selectFreq = (f: RepeatFreq | null) => {
+    setFreq(f);
+    if (f === 'WEEKLY' && byDay.length === 0) setByDay([startWeekday]);
+  };
+
+  const toggleDay = (d: number) =>
+    setByDay((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort((a, b) => a - b)));
+
+  const applyTemplate = (tpl: EventTemplate) => {
+    setTitle(tpl.title);
+    setIcon(tpl.icon);
+    setMemberId(tpl.member_id);
+    if (tpl.calendar_id && calendars.some((c) => c.id === tpl.calendar_id)) setCalendarId(tpl.calendar_id);
+    setAllDay(tpl.all_day);
+    if (tpl.start_time) setStartTime(tpl.start_time);
+    if (tpl.end_time) setEndTime(tpl.end_time);
+    const r = parseRepeat(tpl.rrule);
+    setFreq(r.freq);
+    setByDay(r.byDay);
+    setRemind(tpl.remind_minutes_before);
+    setLocation(tpl.location ?? '');
+    setMemo(tpl.memo ?? '');
+  };
+
   const submit = async () => {
+    if (saving) return;
     if (!title.trim()) return notify('タイトルを入力してください');
     if (!DATE_RE.test(startDate) || !DATE_RE.test(endDate)) {
       return notify('日付は YYYY-MM-DD の形式で入力してください');
@@ -91,10 +146,27 @@ export function EventForm({
 
     setSaving(true);
     try {
+      if (saveAsTemplate && onSaveTemplate) {
+        await onSaveTemplate({
+          title: title.trim(),
+          icon,
+          member_id: memberId,
+          calendar_id: calendarId,
+          all_day: allDay,
+          start_time: allDay ? null : startTime,
+          end_time: allDay ? null : endTime,
+          // テンプレートには「以降を削除」で付いた UNTIL などは持たせない
+          rrule: buildRepeat({ freq, byDay: freq === 'WEEKLY' && byDay.length === 0 ? [startWeekday] : byDay }),
+          remind_minutes_before: remind,
+          location: location.trim() || null,
+          memo: memo.trim() || null,
+        });
+      }
       await onSubmit({
         calendar_id: calendarId,
         title: title.trim(),
         icon,
+        member_id: memberId,
         all_day: allDay,
         starts_at: s.toISOString(),
         ends_at: e.toISOString(),
@@ -111,14 +183,72 @@ export function EventForm({
     }
   };
 
+  const memberName = (id: string | null) =>
+    id ? members.find((m) => m.user_id === id)?.display_name ?? '' : 'みんな';
+
   const input = [styles.input, { color: t.text, backgroundColor: t.backgroundElement }];
   const label = [styles.label, { color: t.textSecondary }];
 
-
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={[styles.root, { backgroundColor: t.background }]}>
-        <View style={styles.titleRow}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined}>
+      {/* キーボードで下の保存ボタンが隠れても押せるよう、ヘッダー右にも保存を置く */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable onPress={submit} hitSlop={10} accessibilityLabel="保存" disabled={saving}>
+              <Text style={[styles.headerSave, { color: t.accent, opacity: saving ? 0.5 : 1 }]}>保存</Text>
+            </Pressable>
+          ),
+        }}
+      />
+      <ScrollView
+        style={{ backgroundColor: t.background }}
+        contentContainerStyle={styles.root}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets>
+        {templates.length > 0 && (
+          <>
+            <Text style={[label, { marginTop: 0 }]}>テンプレートから入力（長押しで削除）</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.templateRow}>
+              {templates.map((tpl) => {
+                const color = tpl.member_id
+                  ? members.find((m) => m.user_id === tpl.member_id)?.color
+                  : undefined;
+                return (
+                  <Pressable
+                    key={tpl.id}
+                    accessibilityLabel={`テンプレート ${tpl.title}`}
+                    onPress={() => applyTemplate(tpl)}
+                    onLongPress={async () => {
+                      if (!onDeleteTemplate) return;
+                      const ok = await confirm(`テンプレート「${tpl.title}」を削除しますか？`, {
+                        okText: '削除',
+                        destructive: true,
+                      });
+                      if (ok) await onDeleteTemplate(tpl);
+                    }}
+                    style={({ pressed }) => [
+                      styles.templateCard,
+                      { backgroundColor: pressed ? t.selected : t.backgroundElement, borderColor: color ?? t.border },
+                    ]}>
+                    <Text style={[styles.templateTitle, { color: t.text }]} numberOfLines={1}>
+                      {tpl.icon ? `${tpl.icon} ` : ''}
+                      {tpl.title}
+                    </Text>
+                    <Text style={[styles.templateSub, { color: t.textSecondary }]} numberOfLines={1}>
+                      {memberName(tpl.member_id)}
+                      {tpl.rrule ? `・${describeRepeat(tpl.rrule)}` : ''}
+                      {tpl.start_time ? `・${tpl.start_time}` : ''}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+
+        <View style={[styles.titleRow, templates.length > 0 && { marginTop: 16 }]}>
           <Pressable
             onPress={() => setIconPicker(true)}
             accessibilityLabel="アイコンを選ぶ"
@@ -131,16 +261,25 @@ export function EventForm({
             placeholder="タイトル"
             placeholderTextColor={t.textMuted}
             style={[...input, { flex: 1, fontSize: 18 }]}
-            autoFocus={!initial}
+            returnKeyType="done"
           />
         </View>
 
-        <Text style={label}>カレンダー</Text>
+        <Text style={label}>誰の予定？</Text>
+        <Chips
+          options={[
+            { label: '👪 みんな', value: EVERYONE },
+            ...members.map((m) => ({ label: m.display_name, value: m.user_id, color: m.color })),
+          ]}
+          value={memberId ?? EVERYONE}
+          onChange={(v) => setMemberId(v === EVERYONE ? null : v)}
+        />
+
+        <Text style={label}>公開範囲</Text>
         <Chips
           options={calendars.map((c) => ({
-            label: `${c.visibility === 'personal' ? '🔒' : '👪'} ${c.name}`,
+            label: c.visibility === 'personal' ? '🔒 自分だけ' : '👪 家族に共有',
             value: c.id,
-            color: c.color,
           }))}
           value={calendarId}
           onChange={setCalendarId}
@@ -153,29 +292,51 @@ export function EventForm({
 
         <Text style={label}>開始</Text>
         <View style={styles.row}>
-          <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" style={[...input, { flex: 2 }]} />
+          <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
           {!allDay && (
-            <TextInput value={startTime} onChangeText={setStartTime} placeholder="HH:mm" style={[...input, { flex: 1 }]} />
+            <TextInput value={startTime} onChangeText={setStartTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
           )}
         </View>
         <Text style={label}>終了</Text>
         <View style={styles.row}>
-          <TextInput value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" style={[...input, { flex: 2 }]} />
+          <TextInput value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
           {!allDay && (
-            <TextInput value={endTime} onChangeText={setEndTime} placeholder="HH:mm" style={[...input, { flex: 1 }]} />
+            <TextInput value={endTime} onChangeText={setEndTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
           )}
         </View>
 
         <Text style={label}>繰り返し</Text>
-        <Chips options={REPEATS} value={rrule} onChange={setRrule} />
+        <Chips options={REPEATS} value={freq} onChange={selectFreq} />
+        {freq === 'WEEKLY' && (
+          <View style={[styles.chips, { marginTop: 8 }]}>
+            {WEEKDAY_LABELS.map((w, d) => {
+              const active = byDay.includes(d);
+              return (
+                <Pressable
+                  key={w}
+                  accessibilityLabel={`${w}曜日`}
+                  accessibilityState={{ selected: active }}
+                  onPress={() => toggleDay(d)}
+                  style={[
+                    styles.dayChip,
+                    { borderColor: t.border },
+                    active && { backgroundColor: t.accent, borderColor: t.accent },
+                  ]}>
+                  <Text
+                    style={{
+                      color: active ? '#fff' : d === 0 ? t.sunday : d === 6 ? t.saturday : t.text,
+                      fontSize: 13,
+                    }}>
+                    {w}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
 
         <Text style={label}>通知</Text>
-        <Chips
-          options={REMINDERS}
-          value={remind}
-          onChange={setRemind}
-          eq={(a, b) => a.join() === b.join()}
-        />
+        <Chips options={REMINDERS} value={remind} onChange={setRemind} eq={(a, b) => a.join() === b.join()} />
 
         <Text style={label}>場所</Text>
         <TextInput value={location} onChangeText={setLocation} placeholder="場所" placeholderTextColor={t.textMuted} style={input} />
@@ -190,6 +351,18 @@ export function EventForm({
           style={[...input, { minHeight: 80, textAlignVertical: 'top' }]}
         />
 
+        {onSaveTemplate && (
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.text, fontSize: 15 }}>この内容をテンプレートに保存</Text>
+              <Text style={{ color: t.textSecondary, fontSize: 11, marginTop: 2 }}>
+                誰の・どんな予定か・時間・繰り返しを、次回からワンタップで入力できます
+              </Text>
+            </View>
+            <Switch value={saveAsTemplate} onValueChange={setSaveAsTemplate} accessibilityLabel="テンプレートに保存" />
+          </View>
+        )}
+
         <Pressable
           disabled={saving}
           onPress={submit}
@@ -198,9 +371,7 @@ export function EventForm({
         </Pressable>
 
         {onDelete && (
-          <Pressable
-            onPress={onDelete}
-            style={styles.danger}>
+          <Pressable onPress={onDelete} style={styles.danger}>
             <Text style={{ color: t.sunday, fontSize: 15 }}>削除</Text>
           </Pressable>
         )}
@@ -241,6 +412,7 @@ function Chips<T>({
           <Pressable
             key={o.label}
             onPress={() => onChange(o.value)}
+            accessibilityState={{ selected: active }}
             style={[
               styles.chip,
               { borderColor: o.color ?? t.border },
@@ -256,14 +428,22 @@ function Chips<T>({
 
 const styles = StyleSheet.create({
   root: { padding: 16, paddingBottom: 48 },
+  headerSave: { fontSize: 17, fontWeight: '700', paddingHorizontal: 4 },
+  templateRow: { gap: 8, paddingRight: 16 },
+  templateCard: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, maxWidth: 200 },
+  templateTitle: { fontSize: 14, fontWeight: '600' },
+  templateSub: { fontSize: 11, marginTop: 2 },
   titleRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   iconButton: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 12, marginTop: 16, marginBottom: 6 },
   input: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   row: { flexDirection: 'row', gap: 8 },
-  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
+  dateInput: { flex: 2, minWidth: 0 },
+  timeInput: { flex: 1, minWidth: 0 },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, gap: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  dayChip: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   primary: { marginTop: 28, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   primaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   danger: { marginTop: 12, paddingVertical: 12, alignItems: 'center' },

@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { buildMonthGrid, toDateKey } from '../src/lib/date.ts';
 import { getJapaneseHolidays } from '../src/lib/holidays.ts';
 import { expandOccurrences, truncateRRuleBefore } from '../src/lib/recurrence.ts';
+import { buildRepeat, describeRepeat, parseRepeat } from '../src/lib/repeat.ts';
 import { weatherCodeToIcon } from '../src/lib/weather.ts';
 
 test('月グリッドは日曜始まりの42日', () => {
@@ -105,4 +106,19 @@ test('天気コード → アイコン', () => {
   assert.equal(weatherCodeToIcon(3).emoji, '☁️');
   assert.equal(weatherCodeToIcon(63).emoji, '☔');
   assert.equal(weatherCodeToIcon(73).emoji, '❄️');
+});
+
+test('繰り返しの読み書き（曜日指定・UNTIL の引き継ぎ）', () => {
+  assert.deepEqual(parseRepeat('FREQ=WEEKLY;BYDAY=TH,MO'), { freq: 'WEEKLY', byDay: [1, 4] });
+  assert.deepEqual(parseRepeat(null), { freq: null, byDay: [] });
+  assert.equal(buildRepeat({ freq: 'WEEKLY', byDay: [4, 1] }), 'FREQ=WEEKLY;BYDAY=MO,TH');
+  assert.equal(buildRepeat({ freq: null, byDay: [] }), null);
+  // 頻度が同じなら UNTIL を残す。変えたら消す
+  assert.equal(
+    buildRepeat({ freq: 'WEEKLY', byDay: [1] }, 'FREQ=WEEKLY;BYDAY=MO,TH;UNTIL=20261231'),
+    'FREQ=WEEKLY;BYDAY=MO;UNTIL=20261231',
+  );
+  assert.equal(buildRepeat({ freq: 'MONTHLY', byDay: [] }, 'FREQ=WEEKLY;UNTIL=20261231'), 'FREQ=MONTHLY');
+  assert.equal(describeRepeat('FREQ=WEEKLY;BYDAY=MO,TH'), '毎週 月・木');
+  assert.equal(describeRepeat('FREQ=YEARLY'), '毎年');
 });

@@ -1,5 +1,6 @@
 import type { CalendarRepository, FamilyContext } from '@/data/repository';
 import { addDays, startOfDay, toDateKey } from '@/lib/date';
+import { demoHourlyFromDaily } from '@/lib/weather';
 import type {
   CalendarEvent,
   DayColor,
@@ -9,6 +10,7 @@ import type {
   NewCalendarEvent,
   Person,
   WeatherDaily,
+  WeatherHourly,
 } from '@/lib/types';
 
 // Supabase 未設定でも画面を確認できるよう、端末メモリ上で動くデモ実装。
@@ -309,17 +311,12 @@ export function createDemoRepository(): CalendarRepository {
     },
 
     async listWeather(_familyId, fromKey, toKey) {
-      // 今日から14日分、それらしい天気を生成
-      const codes = [0, 1, 2, 3, 61, 3, 1, 0, 80, 2, 63, 3, 1, 0];
-      const today = startOfDay(new Date());
-      const rows: WeatherDaily[] = codes.map((code, i) => ({
-        date: toDateKey(addDays(today, i)),
-        weather_code: code,
-        temp_max: 22 - (i % 4),
-        temp_min: 14 - (i % 3),
-        precip_prob: code >= 61 ? 70 : 10,
-      }));
-      return rows.filter((w) => w.date >= fromKey && w.date <= toKey);
+      return demoDailyWeather().filter((w) => w.date >= fromKey && w.date <= toKey);
+    },
+
+    async listHourlyWeather(_familyId, dateKey) {
+      const daily = demoDailyWeather().find((w) => w.date === dateKey);
+      return daily ? (demoHourlyFromDaily(daily) as WeatherHourly[]) : [];
     },
 
     subscribe(onChange) {
@@ -329,4 +326,17 @@ export function createDemoRepository(): CalendarRepository {
 
     async signOut() {},
   };
+}
+
+/** デモ：今日から14日分、それらしい天気を生成 */
+function demoDailyWeather(): WeatherDaily[] {
+  const codes = [0, 1, 2, 3, 61, 3, 1, 0, 80, 2, 63, 3, 1, 0];
+  const today = startOfDay(new Date());
+  return codes.map((code, i) => ({
+    date: toDateKey(addDays(today, i)),
+    weather_code: code,
+    temp_max: 22 - (i % 4),
+    temp_min: 14 - (i % 3),
+    precip_prob: code >= 61 ? 70 : 10,
+  }));
 }

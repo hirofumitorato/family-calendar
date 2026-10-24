@@ -73,6 +73,14 @@ export type WeatherDaily = {
   precip_prob: number | null;
 };
 
+export type WeatherHourly = {
+  date: string; // YYYY-MM-DD
+  hour: number; // 0〜23
+  weather_code: number;
+  temp: number | null;
+  precip_prob: number | null;
+};
+
 /** 繰り返しを展開した後の、画面に出す1件 */
 export type EventOccurrence = {
   key: string; // event.id + 開始時刻

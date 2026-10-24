@@ -46,7 +46,7 @@ Docs: https://docs.expo.dev/eas/index.md
 - Screens only talk to `CalendarRepository` (`src/data/repository.ts`). Any new data operation must be added to the interface AND both implementations (`demo-repository.ts`, `supabase-repository.ts`). The app runs in demo mode when `EXPO_PUBLIC_SUPABASE_*` is unset.
 - Pure logic lives in `src/lib/` with no `@/` imports so `npm test` (node --experimental-strip-types) can run it. Add tests in `tests/` for any change there.
 - DB changes go in a new file under `supabase/migrations/`; keep RLS: `personal` calendars are visible only to `owner_id`, `family` calendars to all family members.
-- Weather: Open-Meteo via `supabase/functions/fetch-weather` → `weather_daily`. The app never calls Open-Meteo directly.
+- Weather: Open-Meteo via `supabase/functions/fetch-weather` → `weather_daily` / `weather_hourly`. The app never calls Open-Meteo directly.
 - Never call `Alert.alert` directly — it is a no-op on web. Use `notify` / `confirm` from `src/utils/dialog.ts`.
 - Colors come from `useTheme()`; the light/dark choice lives in `src/state/theme.tsx` (user setting), not the OS directly.
 - Inputs must never sit under the software keyboard: in scroll forms use `useKeyboardFocusScroll` (`src/hooks/use-keyboard-focus-scroll.ts`) on every TextInput; put modal editors with inputs at the top of the screen, not in bottom sheets.

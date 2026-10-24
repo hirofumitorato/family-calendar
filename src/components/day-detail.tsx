@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MemberBadges } from '@/components/member-badge';
+import { WeatherSheet } from '@/components/weather-sheet';
 import { MemberStripe } from '@/components/member-stripe';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabel, formatTime, isSameDay, parseDateKey, toDateKey } from '@/lib/date';
@@ -36,6 +38,7 @@ export function DayDetail({
   const key = toDateKey(date);
   const holiday = getHolidayName(key);
   const weather = data.weatherByDay.get(key);
+  const [weatherOpen, setWeatherOpen] = useState(false);
   const stickers = data.stickersByDay.get(key) ?? [];
   const occs = data.occurrencesByDay.get(key) ?? [];
   const prefs = useCalendarPrefs();
@@ -67,14 +70,20 @@ export function DayDetail({
           {holiday && <Text style={[styles.holiday, { color: t.sunday }]}>{holiday}</Text>}
         </View>
         {weather && (
-          <View style={styles.weather}>
+          <Pressable
+            onPress={() => setWeatherOpen(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="時間ごとの天気を見る"
+            style={({ pressed }) => [styles.weather, pressed && { opacity: 0.5 }]}>
             <Text style={styles.weatherEmoji}>{weatherCodeToIcon(weather.weather_code).emoji}</Text>
             <Text style={[styles.weatherText, { color: t.textSecondary }]}>
               {weatherCodeToIcon(weather.weather_code).label}
               {weather.temp_max != null && ` ${Math.round(weather.temp_max)}°/${Math.round(weather.temp_min ?? 0)}°`}
               {weather.precip_prob != null && ` ☂${weather.precip_prob}%`}
             </Text>
-          </View>
+            <Text style={[styles.weatherText, { color: t.textMuted }]}>›</Text>
+          </Pressable>
         )}
       </View>
 
@@ -159,6 +168,7 @@ export function DayDetail({
           );
         })
       )}
+      <WeatherSheet date={date} daily={weather} visible={weatherOpen} onClose={() => setWeatherOpen(false)} />
     </View>
   );
 }

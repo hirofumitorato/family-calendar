@@ -12,6 +12,7 @@ import type {
   Genre,
   Person,
   WeatherDaily,
+  WeatherHourly,
 } from '@/lib/types';
 
 function check<T>(res: { data: unknown; error: { message: string } | null }): T {
@@ -267,6 +268,17 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
           .gte('date', fromKey)
           .lte('date', toKey),
       ) as WeatherDaily[];
+    },
+
+    async listHourlyWeather(familyId, dateKey) {
+      return check(
+        await sb
+          .from('weather_hourly')
+          .select('date, hour, weather_code, temp, precip_prob')
+          .eq('family_id', familyId)
+          .eq('date', dateKey)
+          .order('hour'),
+      ) as WeatherHourly[];
     },
 
     subscribe(onChange) {

@@ -12,6 +12,7 @@ import type {
   Person,
   PersonInput,
   WeatherDaily,
+  WeatherHourly,
 } from '@/lib/types';
 
 /** ログイン中ユーザーと、所属する家族の情報 */
@@ -81,6 +82,8 @@ export interface CalendarRepository {
   deletePerson(id: string): Promise<void>;
 
   listWeather(familyId: string, fromKey: string, toKey: string): Promise<WeatherDaily[]>;
+  /** その日の時間ごとの天気（0〜23時）。予報がない日は空 */
+  listHourlyWeather(familyId: string, dateKey: string): Promise<WeatherHourly[]>;
 
   /** 予定・スタンプが他の端末で変更されたときに呼ばれる。戻り値で購読解除 */
   subscribe(onChange: () => void): () => void;

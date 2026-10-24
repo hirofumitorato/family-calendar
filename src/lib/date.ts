@@ -71,3 +71,10 @@ export function parseTime(text: string): { h: number; m: number } | null {
   if (h > 23 || m > 59) return null;
   return { h, m };
 }
+
+/** その月の表示に必要な週の数（日曜始まり。4〜6） */
+export function weeksInMonth(year: number, month: number): number {
+  const firstDow = new Date(year, month, 1).getDay();
+  const days = new Date(year, month + 1, 0).getDate();
+  return Math.ceil((firstDow + days) / 7);
+}

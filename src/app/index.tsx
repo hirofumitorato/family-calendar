@@ -82,24 +82,28 @@ export default function CalendarScreen() {
         </Pressable>
       </View>
 
-      <ScrollView>
-        {/* 横スワイプで月を切り替え（左→翌月、右→前月） */}
-        <SwipePager onPrev={() => move(-1)} onNext={() => move(1)}>
-          <MonthGrid
-            year={year}
-            month={month}
-            selected={selected}
-            onSelect={(d) => {
-              setSelected(d);
-              if (d.getMonth() !== month) setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
-            }}
-            onLongPress={(d) => {
-              setSelected(d);
-              setColorTarget(d);
-            }}
-            data={data}
-          />
-        </SwipePager>
+      {/* 上：カレンダー。横スワイプで月を切り替え（左→翌月、右→前月） */}
+      <SwipePager onPrev={() => move(-1)} onNext={() => move(1)}>
+        <MonthGrid
+          year={year}
+          month={month}
+          selected={selected}
+          onSelect={(d) => {
+            setSelected(d);
+            if (d.getMonth() !== month) setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+          }}
+          onLongPress={(d) => {
+            setSelected(d);
+            setColorTarget(d);
+          }}
+          data={data}
+        />
+      </SwipePager>
+
+      {/* 下：予定の詳細エリア。画面下に固定し、予定が多いときはこの中だけスクロールする */}
+      <ScrollView
+        style={[styles.detail, { borderTopColor: t.border }]}
+        contentContainerStyle={{ paddingBottom: 96 }}>
         <DayDetail
           date={selected}
           data={data}
@@ -116,7 +120,6 @@ export default function CalendarScreen() {
             bumpRevision();
           }}
         />
-        <View style={{ height: 96 }} />
       </ScrollView>
 
       <Pressable
@@ -159,11 +162,12 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 4 },
   nav: { fontSize: 28, lineHeight: 30, paddingHorizontal: 4 },
   month: { fontSize: 20, fontWeight: '700' },
   pill: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 4 },
   gear: { fontSize: 20 },
+  detail: { flex: 1, borderTopWidth: StyleSheet.hairlineWidth },
   fab: {
     position: 'absolute',
     right: 20,

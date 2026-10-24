@@ -4,12 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { dayColorFill } from '@/constants/stickers';
 import type { ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { WEEKDAY_LABELS, buildMonthGrid, isSameDay, toDateKey } from '@/lib/date';
+import { WEEKDAY_LABELS, buildMonthGrid, isSameDay, toDateKey, weeksInMonth } from '@/lib/date';
 import { getHolidayName } from '@/lib/holidays';
 import type { MonthData } from '@/state/app-store';
 import { weatherCodeToIcon } from '@/lib/weather';
 
 const MAX_CHIPS = 3;
+/** 日付マスの高さ（月の週数によらず一定。カレンダー全体を詰めて、下の予定エリアを広くする） */
+export const CELL_HEIGHT = 74;
 
 export function MonthGrid({
   year,
@@ -29,6 +31,7 @@ export function MonthGrid({
 }) {
   const t = useTheme();
   const days = buildMonthGrid(year, month);
+  const weeks = weeksInMonth(year, month);
   const today = new Date();
 
   return (
@@ -45,7 +48,7 @@ export function MonthGrid({
           </Text>
         ))}
       </View>
-      {Array.from({ length: 6 }, (_, row) => (
+      {Array.from({ length: weeks }, (_, row) => (
         <View key={row} style={[styles.row, { borderColor: t.border }]}>
           {days.slice(row * 7, row * 7 + 7).map((d) => {
             const key = toDateKey(d);
@@ -97,6 +100,8 @@ const DayCell = memo(function DayCell({
   const stickers = data.stickersByDay.get(dateKey) ?? [];
   const occs = data.occurrencesByDay.get(dateKey) ?? [];
   const cellColor = data.colorByDay.get(dateKey);
+  // 3件までは全部、4件以上は2件＋「+n」（マスの高さに収める）
+  const shown = occs.length > MAX_CHIPS ? MAX_CHIPS - 1 : MAX_CHIPS;
 
   const dateColor = !inMonth
     ? t.textMuted
@@ -133,6 +138,12 @@ const DayCell = memo(function DayCell({
             {date.getDate()}
           </Text>
         </View>
+        {stickers.length > 0 && (
+          <Text style={styles.stickers} numberOfLines={1}>
+            {stickers.slice(0, 2).map((s) => s.sticker).join('')}
+          </Text>
+        )}
+        <View style={{ flex: 1 }} />
         {weather && inMonth && (
           <Text style={styles.weather} accessibilityLabel={weatherCodeToIcon(weather.weather_code).label}>
             {weatherCodeToIcon(weather.weather_code).emoji}
@@ -140,57 +151,50 @@ const DayCell = memo(function DayCell({
         )}
       </View>
 
-      {stickers.length > 0 && (
-        <Text style={styles.stickers} numberOfLines={1}>
-          {stickers.slice(0, 3).map((s) => s.sticker).join('')}
-        </Text>
-      )}
-
-      {occs.slice(0, MAX_CHIPS).map((o) => (
+      {occs.slice(0, shown).map((o) => (
         <View
           key={o.key}
           style={[
             styles.chip,
-            o.event.all_day
-              ? { backgroundColor: o.color }
-              : { borderLeftColor: o.color, borderLeftWidth: 2 },
+            // 終日は濃い色、時間指定は淡い色のラベル（メンバーの色）
+            { backgroundColor: o.event.all_day ? o.color : `${o.color}33` },
+            !inMonth && { opacity: 0.45 },
           ]}>
           <Text
             numberOfLines={1}
-            style={[styles.chipText, { color: o.event.all_day ? '#fff' : inMonth ? t.text : t.textMuted }]}>
+            style={[styles.chipText, { color: o.event.all_day ? '#fff' : t.text }]}>
             {o.event.icon ?? ''}
             {o.event.title}
           </Text>
         </View>
       ))}
-      {occs.length > MAX_CHIPS && (
-        <Text style={[styles.more, { color: t.textSecondary }]}>+{occs.length - MAX_CHIPS}</Text>
+      {occs.length > shown && (
+        <Text style={[styles.more, { color: t.textSecondary }]}>+{occs.length - shown}</Text>
       )}
     </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
-  weekHeader: { flexDirection: 'row', paddingVertical: 4 },
+  weekHeader: { flexDirection: 'row', paddingVertical: 3 },
   weekLabel: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600' },
   row: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth },
   cell: {
     flex: 1,
-    minHeight: 84,
-    paddingHorizontal: 2,
-    paddingTop: 2,
-    paddingBottom: 2,
+    height: CELL_HEIGHT,
+    paddingHorizontal: 1.5,
+    paddingTop: 1,
     borderLeftWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
-  cellHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cellHeader: { flexDirection: 'row', alignItems: 'center', gap: 1, marginBottom: 1 },
   selectedRing: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderRadius: 4 },
-  dateBadge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  dateBadge: { minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   dateNum: { fontSize: 12, fontWeight: '600', paddingHorizontal: 2 },
   dateToday: { fontWeight: '800' },
-  weather: { fontSize: 11 },
-  stickers: { fontSize: 11, lineHeight: 14 },
-  chip: { marginTop: 1, paddingHorizontal: 2, borderRadius: 3 },
-  chipText: { fontSize: 9, lineHeight: 13 },
-  more: { fontSize: 9 },
+  weather: { fontSize: 10 },
+  stickers: { fontSize: 10, lineHeight: 13 },
+  chip: { marginTop: 1.5, paddingHorizontal: 2, borderRadius: 3 },
+  chipText: { fontSize: 10, lineHeight: 14, fontWeight: '600' },
+  more: { fontSize: 9, lineHeight: 11, paddingHorizontal: 2 },
 });

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildMonthGrid, toDateKey } from '../src/lib/date.ts';
+import { buildMonthGrid, toDateKey, weeksInMonth } from '../src/lib/date.ts';
 import { getJapaneseHolidays } from '../src/lib/holidays.ts';
 import { expandOccurrences, truncateRRuleBefore } from '../src/lib/recurrence.ts';
 import { buildRepeat, describeRepeat, parseRepeat } from '../src/lib/repeat.ts';
@@ -121,4 +121,10 @@ test('繰り返しの読み書き（曜日指定・UNTIL の引き継ぎ）', ()
   assert.equal(buildRepeat({ freq: 'MONTHLY', byDay: [] }, 'FREQ=WEEKLY;UNTIL=20261231'), 'FREQ=MONTHLY');
   assert.equal(describeRepeat('FREQ=WEEKLY;BYDAY=MO,TH'), '毎週 月・木');
   assert.equal(describeRepeat('FREQ=YEARLY'), '毎年');
+});
+
+test('月に必要な週の数', () => {
+  assert.equal(weeksInMonth(2026, 9), 5); // 2026年10月（1日が木曜）
+  assert.equal(weeksInMonth(2026, 7), 6); // 2026年8月（1日が土曜・31日）
+  assert.equal(weeksInMonth(2026, 1), 4); // 2026年2月（1日が日曜・28日）
 });

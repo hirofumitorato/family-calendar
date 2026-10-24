@@ -73,7 +73,18 @@ npx eas-cli@latest build -p ios --profile preview         # iPhone（Apple Devel
 ```
 
 ビルドが終わると表示される URL / QR コードをスマホで開くとインストールできます。
-JS だけの修正は `npx eas-cli@latest update --channel preview` で配信できるようにする予定（expo-updates の導入が必要）。
+### 修正を配信する（EAS Update）
+
+最初の1回だけ `npx eas-cli@latest update:configure`（app.json に updates.url が入る）を実行してからビルドする。
+その後の修正は、ビルドし直さずに配信できる：
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "修正の内容"
+```
+
+アプリは起動時とアプリに戻ったときに確認し、新しいバージョンがあれば「今すぐ再起動しますか？」と聞く（設定 →「アップデートを確認」でも可）。
+`runtimeVersion` は `fingerprint`。ネイティブの部品を追加・更新したとき（`npx expo install` で新しいパッケージを入れたときなど）は、
+その修正は古いアプリには届かないので、もう一度 `eas build` して入れ直す。
 
 ## 構成
 

@@ -7,7 +7,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useApp } from '@/state/app-store';
 import { useCalendarPrefs } from '@/state/calendar-prefs';
 import { useThemePreference } from '@/state/theme';
-import { confirm } from '@/utils/dialog';
+import { currentVersionLabel, fetchNewUpdate, restartToApply, updatesSupported } from '@/utils/app-updates';
+import { confirm, notify } from '@/utils/dialog';
 
 // 天気予報の地点。まずは主要都市から選ぶ形にし、後で expo-location による現在地取得を追加する。
 const LOCATIONS = [
@@ -28,6 +29,7 @@ export default function SettingsScreen() {
   const { preference, setPreference, scheme } = useThemePreference();
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [kaiunOpen, setKaiunOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
   const prefs = useCalendarPrefs();
   if (!ctx) return null;
   const kaiunPerson = prefs.kaiun ? ctx.people.find((p) => p.id === prefs.kaiun?.personId) : null;
@@ -145,6 +147,37 @@ export default function SettingsScreen() {
             </Pressable>
           );
         })}
+      </View>
+
+      <Text style={title}>アプリのバージョン</Text>
+      <View style={section}>
+        <Text style={{ color: t.text }}>{currentVersionLabel()}</Text>
+        <Pressable
+          disabled={checking}
+          accessibilityLabel="アップデートを確認"
+          onPress={async () => {
+            if (!updatesSupported()) {
+              notify('この環境では確認できません', 'インストールしたアプリで使えます（Expo Go では git pull で反映）');
+              return;
+            }
+            setChecking(true);
+            try {
+              if (await fetchNewUpdate()) {
+                if (await confirm('新しいバージョンがあります', { message: '再起動して更新しますか？', okText: '再起動' })) {
+                  await restartToApply();
+                }
+              } else {
+                notify('最新のバージョンです');
+              }
+            } catch {
+              notify('確認できませんでした', '通信できる場所でもう一度お試しください');
+            } finally {
+              setChecking(false);
+            }
+          }}
+          style={{ marginTop: 8 }}>
+          <Text style={{ color: t.accent, fontWeight: '600' }}>{checking ? '確認中…' : 'アップデートを確認'}</Text>
+        </Pressable>
       </View>
 
       {repo.mode === 'supabase' && (

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
+import { useAppUpdates } from '@/hooks/use-app-updates';
 import { AppProvider, useApp } from '@/state/app-store';
 import { CalendarPrefsProvider } from '@/state/calendar-prefs';
 import { ThemePreferenceProvider, useThemePreference } from '@/state/theme';
@@ -12,6 +13,8 @@ SplashScreen.preventAutoHideAsync();
 
 function RootStack() {
   const { status, error } = useApp();
+  // 修正（EAS Update）を自動で受け取る
+  useAppUpdates();
 
   useEffect(() => {
     if (status !== 'loading') SplashScreen.hideAsync();

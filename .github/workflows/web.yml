@@ -1,0 +1,53 @@
+# Web 版を GitHub Pages に公開する（main に push するたびに自動で更新）
+# https://hirofumitorato.github.io/family-calendar/
+name: Web を公開
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Supabase の接続先（公開してよい値：anon / publishable key）。空ならデモモードで公開される
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # GitHub Pages は /family-calendar/ の下に置かれるので、Web のビルドのときだけ baseUrl を付ける
+      # （app.json は書き換えない＝iPhone / Android のビルドには影響しない）
+      - name: baseUrl を設定
+        run: node -e "const f='app.json',a=require('./'+f);a.expo.experiments.baseUrl='/family-calendar';require('fs').writeFileSync(f,JSON.stringify(a,null,2))"
+      - run: npx expo export -p web
+      # 直接開いた URL（/family-calendar/event/xxx など）でも表示できるように
+      - run: cp dist/index.html dist/404.html && touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

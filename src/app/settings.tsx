@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { PeopleSheet } from '@/components/people-sheet';
 import { useTheme } from '@/hooks/use-theme';
 import { useApp } from '@/state/app-store';
 import { useThemePreference } from '@/state/theme';
@@ -22,6 +24,7 @@ export default function SettingsScreen() {
   const t = useTheme();
   const { repo, ctx, reload } = useApp();
   const { preference, setPreference, scheme } = useThemePreference();
+  const [peopleOpen, setPeopleOpen] = useState(false);
   if (!ctx) return null;
   const followSystem = preference === 'system';
 
@@ -71,15 +74,18 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
-      <Text style={title}>メンバー</Text>
+      <Text style={title}>誰の予定？に出る人</Text>
       <View style={section}>
-        {ctx.members.map((m) => (
-          <View key={m.user_id} style={styles.member}>
-            <View style={[styles.dot, { backgroundColor: m.color }]} />
-            <Text style={{ color: t.text, flex: 1 }}>{m.display_name}</Text>
-            {m.role === 'owner' && <Text style={{ color: t.textSecondary, fontSize: 12 }}>作成者</Text>}
+        {ctx.people.map((p) => (
+          <View key={p.id} style={styles.member}>
+            <View style={[styles.dot, { backgroundColor: p.color }]} />
+            <Text style={{ color: t.text, flex: 1 }}>{p.name}</Text>
+            {p.user_id && <Text style={{ color: t.textSecondary, fontSize: 12 }}>アカウントあり</Text>}
           </View>
         ))}
+        <Pressable onPress={() => setPeopleOpen(true)} accessibilityLabel="人を追加・編集" style={{ marginTop: 6 }}>
+          <Text style={{ color: t.accent, fontWeight: '600' }}>＋ 追加・編集</Text>
+        </Pressable>
       </View>
 
       <Text style={title}>天気予報の地点（現在：{ctx.family.location_name ?? '未設定'}）</Text>
@@ -116,6 +122,7 @@ export default function SettingsScreen() {
           <Text style={{ color: t.sunday }}>ログアウト</Text>
         </Pressable>
       )}
+      <PeopleSheet visible={peopleOpen} onClose={() => setPeopleOpen(false)} />
     </ScrollView>
   );
 }

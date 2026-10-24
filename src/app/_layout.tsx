@@ -44,6 +44,7 @@ function RootStack() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="event/new" options={{ title: '予定を追加', presentation: 'modal' }} />
         <Stack.Screen name="event/[id]" options={{ title: '予定を編集', presentation: 'modal' }} />
+        <Stack.Screen name="template/[id]" options={{ title: 'テンプレート', presentation: 'modal' }} />
         <Stack.Screen name="settings" options={{ title: '設定' }} />
       </Stack.Protected>
     </Stack>

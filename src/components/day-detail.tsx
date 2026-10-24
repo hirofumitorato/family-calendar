@@ -97,7 +97,7 @@ export function DayDetail({
               {o.event.title}
             </Text>
             <Text style={[styles.calName, { color: o.member ? o.member.color : t.textSecondary }]} numberOfLines={1}>
-              {o.member ? o.member.display_name : 'みんな'}
+              {o.member ? o.member.name : 'みんな'}
               {o.calendar.visibility === 'personal' ? ' 🔒' : ''}
             </Text>
             <Pressable

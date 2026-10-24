@@ -14,12 +14,16 @@ export default function NewEventScreen() {
   return (
     <EventForm
       calendars={ctx?.calendars ?? []}
-      members={ctx?.members ?? []}
+      people={ctx?.people ?? []}
       defaultCalendarId={defaultCalendar?.id}
       defaultDate={date ?? toDateKey(new Date())}
       templates={templates}
       onSaveTemplate={save}
       onDeleteTemplate={remove}
+      onEditTemplate={(tpl) => router.push({ pathname: '/template/[id]', params: { id: tpl.id } })}
+      onCreateTemplate={(genre) =>
+        router.push({ pathname: '/template/[id]', params: { id: 'new', genre: genre ?? '' } })
+      }
       onSubmit={async (value) => {
         await repo.createEvent(value);
         bumpRevision();

@@ -6,6 +6,7 @@ import type {
   DaySticker,
   EventTemplate,
   NewCalendarEvent,
+  Person,
   WeatherDaily,
 } from '@/lib/types';
 
@@ -89,37 +90,48 @@ export function createDemoRepository(): CalendarRepository {
     { id: 's2', calendar_id: FAMILY_CAL, date: toDateKey(addDays(new Date(), 5)), sticker: '⭐' },
   ];
   let dayColors: DayColor[] = [];
+  const tpl = (
+    id: string,
+    category: string | null,
+    title: string,
+    icon: string,
+    member_id: string | null,
+    start_time: string | null,
+    end_time: string | null,
+    rrule: string | null,
+    extra: Partial<EventTemplate> = {},
+  ): EventTemplate => ({
+    id,
+    family_id: FAMILY_ID,
+    category,
+    title,
+    icon,
+    member_id,
+    calendar_id: FAMILY_CAL,
+    all_day: start_time === null,
+    start_time,
+    end_time,
+    rrule,
+    remind_minutes_before: [],
+    location: null,
+    memo: null,
+    ...extra,
+  });
   let templates: EventTemplate[] = [
-    {
-      id: 't1',
-      family_id: FAMILY_ID,
-      title: '燃えるゴミ',
-      icon: '🗑️',
-      member_id: null,
-      calendar_id: FAMILY_CAL,
-      all_day: false,
-      start_time: '08:00',
-      end_time: '08:30',
-      rrule: 'FREQ=WEEKLY;BYDAY=MO,TH',
-      remind_minutes_before: [],
-      location: null,
-      memo: null,
-    },
-    {
-      id: 't2',
-      family_id: FAMILY_ID,
-      title: 'スイミング',
-      icon: '🏊',
-      member_id: KID,
-      calendar_id: FAMILY_CAL,
-      all_day: false,
-      start_time: '16:00',
-      end_time: '17:00',
-      rrule: 'FREQ=WEEKLY;BYDAY=WE',
+    tpl('t1', '家事', '燃えるゴミ', '🗑️', null, '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=MO,TH'),
+    tpl('t2', '家事', '資源ゴミ', '♻️', null, '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=WE'),
+    tpl('t3', '習い事', 'スイミング', '🏊', KID, '16:00', '17:00', 'FREQ=WEEKLY;BYDAY=WE', {
       remind_minutes_before: [60],
       location: '市民プール',
-      memo: null,
-    },
+    }),
+    tpl('t4', '習い事', 'ピアノ', '🎹', KID, '17:00', '18:00', 'FREQ=WEEKLY;BYDAY=TU'),
+    tpl('t5', '病院', '歯医者', '🦷', ME, '15:00', '16:00', null, { remind_minutes_before: [60] }),
+    tpl('t6', '仕事', '在宅勤務', '💻', PARTNER, null, null, 'FREQ=WEEKLY;BYDAY=FR'),
+  ];
+  let people: Person[] = [
+    { id: ME, family_id: FAMILY_ID, name: 'わたし', color: '#3B82F6', user_id: ME, sort_order: 0 },
+    { id: PARTNER, family_id: FAMILY_ID, name: 'パートナー', color: '#EC4899', user_id: PARTNER, sort_order: 1 },
+    { id: KID, family_id: FAMILY_ID, name: 'こども', color: '#10B981', user_id: null, sort_order: 2 },
   ];
   let seq = 100;
   const listeners = new Set<() => void>();
@@ -140,6 +152,7 @@ export function createDemoRepository(): CalendarRepository {
       { family_id: FAMILY_ID, user_id: PARTNER, display_name: 'パートナー', color: '#EC4899', role: 'member' },
       { family_id: FAMILY_ID, user_id: KID, display_name: 'こども', color: '#10B981', role: 'member' },
     ],
+    people: [],
     calendars: [
       { id: FAMILY_CAL, family_id: FAMILY_ID, owner_id: null, name: '家族', color: '#F97316', visibility: 'family' },
       { id: MY_CAL, family_id: FAMILY_ID, owner_id: ME, name: 'わたし', color: '#3B82F6', visibility: 'personal' },
@@ -150,7 +163,8 @@ export function createDemoRepository(): CalendarRepository {
     mode: 'demo',
 
     async getContext() {
-      return context;
+      // 毎回新しいオブジェクトを返す（画面側で変更を検知できるように）
+      return { ...context, people: [...people].sort((a, b) => a.sort_order - b.sort_order) };
     },
     async createFamily() {},
     async joinFamily() {},
@@ -217,8 +231,35 @@ export function createDemoRepository(): CalendarRepository {
       templates = [...templates, created];
       return created;
     },
+    async updateTemplate(id, patch) {
+      templates = templates.map((t) => (t.id === id ? { ...t, ...patch } : t));
+    },
     async deleteTemplate(id) {
       templates = templates.filter((t) => t.id !== id);
+    },
+
+    async createPerson(familyId, input) {
+      const created: Person = {
+        id: `p${seq++}`,
+        family_id: familyId,
+        name: input.name,
+        color: input.color,
+        user_id: null,
+        sort_order: Math.max(-1, ...people.map((p) => p.sort_order)) + 1,
+      };
+      people = [...people, created];
+      return created;
+    },
+    async updatePerson(id, input) {
+      people = people.map((p) => (p.id === id ? { ...p, ...input } : p));
+      notify();
+    },
+    async deletePerson(id) {
+      people = people.filter((p) => p.id !== id);
+      // DB の on delete set null と同じ動き
+      events = events.map((e) => (e.member_id === id ? { ...e, member_id: null } : e));
+      templates = templates.map((t) => (t.member_id === id ? { ...t, member_id: null } : t));
+      notify();
     },
 
     async listWeather(_familyId, fromKey, toKey) {

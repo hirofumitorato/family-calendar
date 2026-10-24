@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,20 +12,22 @@ import {
   View,
 } from 'react-native';
 
+import { PeopleSheet } from '@/components/people-sheet';
 import { StickerPicker } from '@/components/sticker-picker';
+import { TemplatePicker, UNCATEGORIZED, templateGenres } from '@/components/template-picker';
 import { EVENT_ICON_GROUPS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
 import { WEEKDAY_LABELS, formatTime, parseDateKey, parseTime, toDateKey } from '@/lib/date';
-import { buildRepeat, describeRepeat, parseRepeat, type RepeatFreq } from '@/lib/repeat';
+import { buildRepeat, parseRepeat, type RepeatFreq } from '@/lib/repeat';
 import type {
   Calendar,
   CalendarEvent,
   EventTemplate,
-  FamilyMember,
   NewCalendarEvent,
   NewEventTemplate,
+  Person,
 } from '@/lib/types';
-import { confirm, notify } from '@/utils/dialog';
+import { notify } from '@/utils/dialog';
 
 const REPEATS: { label: string; value: RepeatFreq | null }[] = [
   { label: 'なし', value: null },
@@ -45,60 +47,85 @@ const REMINDERS = [
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const EVERYONE = '__everyone__';
 
-export function EventForm({
-  calendars,
-  members,
-  initial,
-  defaultCalendarId,
-  defaultDate,
-  templates = [],
-  onSubmit,
-  onDelete,
-  onSaveTemplate,
-  onDeleteTemplate,
-}: {
+export type TemplateInput = Omit<NewEventTemplate, 'family_id'>;
+
+type Props = {
   calendars: Calendar[];
-  members: FamilyMember[];
-  initial?: CalendarEvent;
+  people: Person[];
   defaultCalendarId?: string;
-  defaultDate: string;
-  /** 予定テンプレート（タップでフォームに反映） */
+  /** テンプレート（ピッカーの表示とジャンル候補に使う） */
   templates?: EventTemplate[];
-  onSubmit: (value: NewCalendarEvent) => Promise<void>;
-  /** 削除ボタン。確認（範囲選択）は呼び出し側で行う */
-  onDelete?: () => void;
-  /** 「テンプレートに保存」がオンのとき、保存時に呼ばれる */
-  onSaveTemplate?: (template: Omit<NewEventTemplate, 'family_id'>) => Promise<void>;
-  onDeleteTemplate?: (template: EventTemplate) => Promise<void>;
-}) {
+} & (
+  | {
+      /** 予定の追加・編集 */
+      mode?: 'event';
+      initial?: CalendarEvent;
+      defaultDate: string;
+      onSubmit: (value: NewCalendarEvent) => Promise<void>;
+      /** 削除ボタン。確認（範囲選択）は呼び出し側で行う */
+      onDelete?: () => void;
+      /** 「テンプレートに保存」がオンのとき、保存時に呼ばれる */
+      onSaveTemplate?: (template: TemplateInput) => Promise<void>;
+      /** テンプレートピッカーの操作 */
+      onEditTemplate?: (template: EventTemplate) => void;
+      onCreateTemplate?: (genre: string | null) => void;
+      onDeleteTemplate?: (template: EventTemplate) => Promise<void>;
+    }
+  | {
+      /** テンプレートの追加・編集（日付は持たず、時間・繰り返し・ジャンルを保存する） */
+      mode: 'template';
+      initialTemplate?: EventTemplate;
+      defaultGenre?: string | null;
+      onSubmitTemplate: (value: TemplateInput) => Promise<void>;
+      onDelete?: () => void;
+    }
+);
+
+export function EventForm(props: Props) {
+  const { calendars, people, defaultCalendarId, templates = [] } = props;
+  const isTemplate = props.mode === 'template';
+  const initial = props.mode !== 'template' ? props.initial : undefined;
+  const tpl0 = props.mode === 'template' ? props.initialTemplate : undefined;
+  const defaultDate = props.mode !== 'template' ? props.defaultDate : toDateKey(new Date());
+
   const t = useTheme();
   const initStart = initial ? new Date(initial.starts_at) : parseDateKey(defaultDate);
   const initEnd = initial ? new Date(initial.ends_at) : parseDateKey(defaultDate);
-  const initRepeat = parseRepeat(initial?.rrule);
+  const initRepeat = parseRepeat(initial?.rrule ?? tpl0?.rrule);
 
-  const [title, setTitle] = useState(initial?.title ?? '');
-  const [icon, setIcon] = useState<string | null>(initial?.icon ?? null);
-  const [memberId, setMemberId] = useState<string | null>(initial?.member_id ?? null);
-  const [calendarId, setCalendarId] = useState(initial?.calendar_id ?? defaultCalendarId ?? calendars[0]?.id);
-  const [allDay, setAllDay] = useState(initial?.all_day ?? false);
+  const [title, setTitle] = useState(initial?.title ?? tpl0?.title ?? '');
+  const [icon, setIcon] = useState<string | null>(initial?.icon ?? tpl0?.icon ?? null);
+  const [memberId, setMemberId] = useState<string | null>(initial?.member_id ?? tpl0?.member_id ?? null);
+  const [calendarId, setCalendarId] = useState(
+    initial?.calendar_id ?? tpl0?.calendar_id ?? defaultCalendarId ?? calendars[0]?.id,
+  );
+  const [allDay, setAllDay] = useState(initial?.all_day ?? tpl0?.all_day ?? false);
   const [startDate, setStartDate] = useState(toDateKey(initStart));
   const [endDate, setEndDate] = useState(toDateKey(initEnd));
-  const [startTime, setStartTime] = useState(initial ? formatTime(initStart) : '10:00');
-  const [endTime, setEndTime] = useState(initial ? formatTime(initEnd) : '11:00');
+  const [startTime, setStartTime] = useState(initial ? formatTime(initStart) : tpl0?.start_time ?? '10:00');
+  const [endTime, setEndTime] = useState(initial ? formatTime(initEnd) : tpl0?.end_time ?? '11:00');
   const [freq, setFreq] = useState<RepeatFreq | null>(initRepeat.freq);
   const [byDay, setByDay] = useState<number[]>(initRepeat.byDay);
-  const [remind, setRemind] = useState<number[]>(initial?.remind_minutes_before ?? []);
-  const [location, setLocation] = useState(initial?.location ?? '');
-  const [memo, setMemo] = useState(initial?.memo ?? '');
+  const [remind, setRemind] = useState<number[]>(initial?.remind_minutes_before ?? tpl0?.remind_minutes_before ?? []);
+  const [location, setLocation] = useState(initial?.location ?? tpl0?.location ?? '');
+  const [memo, setMemo] = useState(initial?.memo ?? tpl0?.memo ?? '');
+  const [genre, setGenre] = useState(
+    tpl0?.category ?? (props.mode === 'template' ? props.defaultGenre ?? '' : ''),
+  );
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [iconPicker, setIconPicker] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const genres = useMemo(() => templateGenres(templates).filter((g) => g !== UNCATEGORIZED), [templates]);
+
+  // 選んでいた人が削除されたら「みんな」に戻す
+  useEffect(() => {
+    if (memberId && !people.some((p) => p.id === memberId)) setMemberId(null);
+  }, [people, memberId]);
+
   const startWeekday = DATE_RE.test(startDate) ? parseDateKey(startDate).getDay() : new Date().getDay();
-  const rrule = buildRepeat(
-    { freq, byDay: freq === 'WEEKLY' && byDay.length === 0 ? [startWeekday] : byDay },
-    initial?.rrule,
-  );
+  const weeklyDays = freq === 'WEEKLY' && byDay.length === 0 ? [startWeekday] : byDay;
 
   const selectFreq = (f: RepeatFreq | null) => {
     setFreq(f);
@@ -111,7 +138,7 @@ export function EventForm({
   const applyTemplate = (tpl: EventTemplate) => {
     setTitle(tpl.title);
     setIcon(tpl.icon);
-    setMemberId(tpl.member_id);
+    setMemberId(tpl.member_id && people.some((p) => p.id === tpl.member_id) ? tpl.member_id : null);
     if (tpl.calendar_id && calendars.some((c) => c.id === tpl.calendar_id)) setCalendarId(tpl.calendar_id);
     setAllDay(tpl.all_day);
     if (tpl.start_time) setStartTime(tpl.start_time);
@@ -124,9 +151,41 @@ export function EventForm({
     setMemo(tpl.memo ?? '');
   };
 
+  const templateValue = (): TemplateInput => ({
+    category: genre.trim() || null,
+    title: title.trim(),
+    icon,
+    member_id: memberId,
+    calendar_id: calendarId ?? null,
+    all_day: allDay,
+    start_time: allDay ? null : startTime,
+    end_time: allDay ? null : endTime,
+    // テンプレートには「以降を削除」で付いた UNTIL などは持たせない
+    rrule: buildRepeat({ freq, byDay: weeklyDays }),
+    remind_minutes_before: remind,
+    location: location.trim() || null,
+    memo: memo.trim() || null,
+  });
+
   const submit = async () => {
     if (saving) return;
     if (!title.trim()) return notify('タイトルを入力してください');
+    if (!allDay && (!parseTime(startTime) || !parseTime(endTime))) {
+      return notify('時刻は HH:mm の形式で入力してください');
+    }
+
+    if (props.mode === 'template') {
+      setSaving(true);
+      try {
+        await props.onSubmitTemplate(templateValue());
+      } catch (err) {
+        notify('保存できませんでした', err instanceof Error ? err.message : String(err));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     if (!DATE_RE.test(startDate) || !DATE_RE.test(endDate)) {
       return notify('日付は YYYY-MM-DD の形式で入力してください');
     }
@@ -135,9 +194,8 @@ export function EventForm({
     if (allDay) {
       e.setHours(23, 59, 0, 0);
     } else {
-      const st = parseTime(startTime);
-      const et = parseTime(endTime);
-      if (!st || !et) return notify('時刻は HH:mm の形式で入力してください');
+      const st = parseTime(startTime)!;
+      const et = parseTime(endTime)!;
       s.setHours(st.h, st.m, 0, 0);
       e.setHours(et.h, et.m, 0, 0);
     }
@@ -146,23 +204,8 @@ export function EventForm({
 
     setSaving(true);
     try {
-      if (saveAsTemplate && onSaveTemplate) {
-        await onSaveTemplate({
-          title: title.trim(),
-          icon,
-          member_id: memberId,
-          calendar_id: calendarId,
-          all_day: allDay,
-          start_time: allDay ? null : startTime,
-          end_time: allDay ? null : endTime,
-          // テンプレートには「以降を削除」で付いた UNTIL などは持たせない
-          rrule: buildRepeat({ freq, byDay: freq === 'WEEKLY' && byDay.length === 0 ? [startWeekday] : byDay }),
-          remind_minutes_before: remind,
-          location: location.trim() || null,
-          memo: memo.trim() || null,
-        });
-      }
-      await onSubmit({
+      if (saveAsTemplate && props.onSaveTemplate) await props.onSaveTemplate(templateValue());
+      await props.onSubmit({
         calendar_id: calendarId,
         title: title.trim(),
         icon,
@@ -170,7 +213,7 @@ export function EventForm({
         all_day: allDay,
         starts_at: s.toISOString(),
         ends_at: e.toISOString(),
-        rrule,
+        rrule: buildRepeat({ freq, byDay: weeklyDays }, initial?.rrule),
         exdates: initial?.exdates ?? [],
         remind_minutes_before: remind,
         location: location.trim() || null,
@@ -183,11 +226,17 @@ export function EventForm({
     }
   };
 
-  const memberName = (id: string | null) =>
-    id ? members.find((m) => m.user_id === id)?.display_name ?? '' : 'みんな';
-
   const input = [styles.input, { color: t.text, backgroundColor: t.backgroundElement }];
   const label = [styles.label, { color: t.textSecondary }];
+  const picker =
+    props.mode !== 'template' && !initial && props.onEditTemplate
+      ? {
+          onEdit: props.onEditTemplate,
+          onCreate: props.onCreateTemplate ?? (() => {}),
+          onDelete: props.onDeleteTemplate ?? (async () => {}),
+        }
+      : null;
+  const showGenre = isTemplate || saveAsTemplate;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined}>
@@ -207,48 +256,21 @@ export function EventForm({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets>
-        {templates.length > 0 && (
-          <>
-            <Text style={[label, { marginTop: 0 }]}>テンプレートから入力（長押しで削除）</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.templateRow}>
-              {templates.map((tpl) => {
-                const color = tpl.member_id
-                  ? members.find((m) => m.user_id === tpl.member_id)?.color
-                  : undefined;
-                return (
-                  <Pressable
-                    key={tpl.id}
-                    accessibilityLabel={`テンプレート ${tpl.title}`}
-                    onPress={() => applyTemplate(tpl)}
-                    onLongPress={async () => {
-                      if (!onDeleteTemplate) return;
-                      const ok = await confirm(`テンプレート「${tpl.title}」を削除しますか？`, {
-                        okText: '削除',
-                        destructive: true,
-                      });
-                      if (ok) await onDeleteTemplate(tpl);
-                    }}
-                    style={({ pressed }) => [
-                      styles.templateCard,
-                      { backgroundColor: pressed ? t.selected : t.backgroundElement, borderColor: color ?? t.border },
-                    ]}>
-                    <Text style={[styles.templateTitle, { color: t.text }]} numberOfLines={1}>
-                      {tpl.icon ? `${tpl.icon} ` : ''}
-                      {tpl.title}
-                    </Text>
-                    <Text style={[styles.templateSub, { color: t.textSecondary }]} numberOfLines={1}>
-                      {memberName(tpl.member_id)}
-                      {tpl.rrule ? `・${describeRepeat(tpl.rrule)}` : ''}
-                      {tpl.start_time ? `・${tpl.start_time}` : ''}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </>
+        {picker && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={[label, { marginTop: 0 }]}>テンプレートから入力</Text>
+            <TemplatePicker
+              templates={templates}
+              people={people}
+              onApply={applyTemplate}
+              onEdit={picker.onEdit}
+              onCreate={picker.onCreate}
+              onDelete={picker.onDelete}
+            />
+          </View>
         )}
 
-        <View style={[styles.titleRow, templates.length > 0 && { marginTop: 16 }]}>
+        <View style={styles.titleRow}>
           <Pressable
             onPress={() => setIconPicker(true)}
             accessibilityLabel="アイコンを選ぶ"
@@ -258,18 +280,57 @@ export function EventForm({
           <TextInput
             value={title}
             onChangeText={setTitle}
-            placeholder="タイトル"
+            placeholder={isTemplate ? 'テンプレート名（予定のタイトル）' : 'タイトル'}
             placeholderTextColor={t.textMuted}
             style={[...input, { flex: 1, fontSize: 18 }]}
             returnKeyType="done"
           />
         </View>
 
-        <Text style={label}>誰の予定？</Text>
+        {showGenre && (
+          <>
+            <Text style={label}>ジャンル</Text>
+            {genres.length > 0 && (
+              <View style={[styles.chips, { marginBottom: 8 }]}>
+                {genres.map((g) => {
+                  const active = g === genre.trim();
+                  return (
+                    <Pressable
+                      key={g}
+                      accessibilityLabel={`ジャンル ${g} にする`}
+                      onPress={() => setGenre(active ? '' : g)}
+                      style={[
+                        styles.chip,
+                        { borderColor: t.border },
+                        active && { backgroundColor: t.accent, borderColor: t.accent },
+                      ]}>
+                      <Text style={{ color: active ? '#fff' : t.text, fontSize: 13 }}>{g}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+            <TextInput
+              value={genre}
+              onChangeText={setGenre}
+              placeholder="新しいジャンル（例：習い事、家事、病院）"
+              placeholderTextColor={t.textMuted}
+              accessibilityLabel="ジャンル名"
+              style={input}
+            />
+          </>
+        )}
+
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, { color: t.textSecondary }]}>誰の予定？</Text>
+          <Pressable onPress={() => setPeopleOpen(true)} hitSlop={8} accessibilityLabel="人を追加・編集">
+            <Text style={{ color: t.accent, fontSize: 13, fontWeight: '600' }}>＋ 追加・編集</Text>
+          </Pressable>
+        </View>
         <Chips
           options={[
             { label: '👪 みんな', value: EVERYONE },
-            ...members.map((m) => ({ label: m.display_name, value: m.user_id, color: m.color })),
+            ...people.map((p) => ({ label: p.name, value: p.id, color: p.color })),
           ]}
           value={memberId ?? EVERYONE}
           onChange={(v) => setMemberId(v === EVERYONE ? null : v)}
@@ -290,27 +351,42 @@ export function EventForm({
           <Switch value={allDay} onValueChange={setAllDay} />
         </View>
 
-        <Text style={label}>開始</Text>
-        <View style={styles.row}>
-          <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
-          {!allDay && (
-            <TextInput value={startTime} onChangeText={setStartTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
-          )}
-        </View>
-        <Text style={label}>終了</Text>
-        <View style={styles.row}>
-          <TextInput value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
-          {!allDay && (
-            <TextInput value={endTime} onChangeText={setEndTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
-          )}
-        </View>
+        {isTemplate ? (
+          !allDay && (
+            <>
+              <Text style={label}>時間</Text>
+              <View style={[styles.row, { alignItems: 'center' }]}>
+                <TextInput value={startTime} onChangeText={setStartTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
+                <Text style={{ color: t.textSecondary }}>〜</Text>
+                <TextInput value={endTime} onChangeText={setEndTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
+              </View>
+            </>
+          )
+        ) : (
+          <>
+            <Text style={label}>開始</Text>
+            <View style={styles.row}>
+              <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
+              {!allDay && (
+                <TextInput value={startTime} onChangeText={setStartTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
+              )}
+            </View>
+            <Text style={label}>終了</Text>
+            <View style={styles.row}>
+              <TextInput value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
+              {!allDay && (
+                <TextInput value={endTime} onChangeText={setEndTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
+              )}
+            </View>
+          </>
+        )}
 
         <Text style={label}>繰り返し</Text>
         <Chips options={REPEATS} value={freq} onChange={selectFreq} />
         {freq === 'WEEKLY' && (
           <View style={[styles.chips, { marginTop: 8 }]}>
             {WEEKDAY_LABELS.map((w, d) => {
-              const active = byDay.includes(d);
+              const active = weeklyDays.includes(d);
               return (
                 <Pressable
                   key={w}
@@ -351,12 +427,12 @@ export function EventForm({
           style={[...input, { minHeight: 80, textAlignVertical: 'top' }]}
         />
 
-        {onSaveTemplate && (
+        {props.mode !== 'template' && props.onSaveTemplate && (
           <View style={styles.switchRow}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: t.text, fontSize: 15 }}>この内容をテンプレートに保存</Text>
               <Text style={{ color: t.textSecondary, fontSize: 11, marginTop: 2 }}>
-                誰の・どんな予定か・時間・繰り返しを、次回からワンタップで入力できます
+                ジャンルを付けて保存すると、次回から「テンプレートから入力」で選べます
               </Text>
             </View>
             <Switch value={saveAsTemplate} onValueChange={setSaveAsTemplate} accessibilityLabel="テンプレートに保存" />
@@ -370,9 +446,9 @@ export function EventForm({
           <Text style={styles.primaryText}>{saving ? '保存中…' : '保存'}</Text>
         </Pressable>
 
-        {onDelete && (
-          <Pressable onPress={onDelete} style={styles.danger}>
-            <Text style={{ color: t.sunday, fontSize: 15 }}>削除</Text>
+        {props.onDelete && (
+          <Pressable onPress={props.onDelete} style={styles.danger}>
+            <Text style={{ color: t.sunday, fontSize: 15 }}>{isTemplate ? 'このテンプレートを削除' : '削除'}</Text>
           </Pressable>
         )}
       </ScrollView>
@@ -388,6 +464,7 @@ export function EventForm({
         }}
         onClose={() => setIconPicker(false)}
       />
+      <PeopleSheet visible={peopleOpen} onClose={() => setPeopleOpen(false)} />
     </KeyboardAvoidingView>
   );
 }
@@ -410,7 +487,7 @@ function Chips<T>({
         const active = eq(o.value, value);
         return (
           <Pressable
-            key={o.label}
+            key={`${o.label}-${String(o.value)}`}
             onPress={() => onChange(o.value)}
             accessibilityState={{ selected: active }}
             style={[
@@ -429,13 +506,10 @@ function Chips<T>({
 const styles = StyleSheet.create({
   root: { padding: 16, paddingBottom: 48 },
   headerSave: { fontSize: 17, fontWeight: '700', paddingHorizontal: 4 },
-  templateRow: { gap: 8, paddingRight: 16 },
-  templateCard: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, maxWidth: 200 },
-  templateTitle: { fontSize: 14, fontWeight: '600' },
-  templateSub: { fontSize: 11, marginTop: 2 },
   titleRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   iconButton: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 12, marginTop: 16, marginBottom: 6 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 0 },
   input: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   row: { flexDirection: 'row', gap: 8 },
   dateInput: { flex: 2, minWidth: 0 },

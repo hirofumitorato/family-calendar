@@ -42,7 +42,7 @@ export type CalendarEvent = {
   exdates: string[];
   icon: string | null;
   remind_minutes_before: number[];
-  /** 誰の予定か（family_members.user_id）。null = 家族みんな */
+  /** 誰の予定か（family_people.id）。null = 家族みんな */
   member_id: string | null;
 };
 
@@ -75,7 +75,7 @@ export type EventOccurrence = {
   event: CalendarEvent;
   calendar: Calendar;
   /** 誰の予定か（未指定なら null = みんな） */
-  member: FamilyMember | null;
+  member: Person | null;
   /** 表示色：メンバーの色、なければカレンダーの色 */
   color: string;
   start: Date;
@@ -89,6 +89,8 @@ export type DeleteScope = 'this' | 'following' | 'all';
 export type EventTemplate = {
   id: string;
   family_id: string;
+  /** ジャンル（例：習い事、家事）。null = 未分類 */
+  category: string | null;
   title: string;
   icon: string | null;
   member_id: string | null;
@@ -103,3 +105,16 @@ export type EventTemplate = {
 };
 
 export type NewEventTemplate = Omit<EventTemplate, 'id'>;
+
+/** 「誰の予定？」に出る家族の人（アカウントがなくてもよい） */
+export type Person = {
+  id: string;
+  family_id: string;
+  name: string;
+  color: string;
+  /** アプリのアカウントがある人なら auth.users.id */
+  user_id: string | null;
+  sort_order: number;
+};
+
+export type PersonInput = { name: string; color: string };

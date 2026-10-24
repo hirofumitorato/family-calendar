@@ -44,7 +44,7 @@ export default function EditEventScreen() {
     <>
       <EventForm
         calendars={ctx?.calendars ?? []}
-        members={ctx?.members ?? []}
+        people={ctx?.people ?? []}
         initial={event}
         onSaveTemplate={saveTemplate}
         defaultDate={toDateKey(new Date(event.starts_at))}

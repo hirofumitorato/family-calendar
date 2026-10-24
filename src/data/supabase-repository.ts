@@ -9,6 +9,7 @@ import type {
   EventTemplate,
   Family,
   FamilyMember,
+  Person,
   WeatherDaily,
 } from '@/lib/types';
 
@@ -33,12 +34,19 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
       if (!membership?.length) return 'no-family';
       const familyId = membership[0].family_id as string;
 
-      const [family, members, calendars] = await Promise.all([
+      const [family, members, calendars, people] = await Promise.all([
         sb.from('families').select('*').eq('id', familyId).single().then((r) => check<Family>(r)),
         sb.from('family_members').select('*').eq('family_id', familyId).then((r) => check<FamilyMember[]>(r)),
         sb.from('calendars').select('*').eq('family_id', familyId).order('created_at').then((r) => check<Calendar[]>(r)),
+        sb
+          .from('family_people')
+          .select('*')
+          .eq('family_id', familyId)
+          .order('sort_order')
+          .order('created_at')
+          .then((r) => check<Person[]>(r)),
       ]);
-      return { userId: user.id, family, members, calendars };
+      return { userId: user.id, family, members, calendars, people };
     },
 
     async createFamily(familyName, displayName) {
@@ -156,8 +164,34 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
           .single(),
       );
     },
+    async updateTemplate(id, patch) {
+      check(await sb.from('event_templates').update(patch).eq('id', id));
+    },
     async deleteTemplate(id) {
       check(await sb.from('event_templates').delete().eq('id', id));
+    },
+
+    async createPerson(familyId, input) {
+      const { data: last } = await sb
+        .from('family_people')
+        .select('sort_order')
+        .eq('family_id', familyId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      const sort_order = (last?.[0]?.sort_order ?? -1) + 1;
+      return check<Person>(
+        await sb
+          .from('family_people')
+          .insert({ family_id: familyId, name: input.name, color: input.color, sort_order })
+          .select('*')
+          .single(),
+      );
+    },
+    async updatePerson(id, input) {
+      check(await sb.from('family_people').update({ name: input.name, color: input.color }).eq('id', id));
+    },
+    async deletePerson(id) {
+      check(await sb.from('family_people').delete().eq('id', id));
     },
 
     async listWeather(familyId, fromKey, toKey) {

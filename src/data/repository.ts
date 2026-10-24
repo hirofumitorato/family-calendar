@@ -8,6 +8,8 @@ import type {
   FamilyMember,
   NewCalendarEvent,
   NewEventTemplate,
+  Person,
+  PersonInput,
   WeatherDaily,
 } from '@/lib/types';
 
@@ -16,6 +18,8 @@ export type FamilyContext = {
   userId: string;
   family: Family;
   members: FamilyMember[];
+  /** 「誰の予定？」に出る人（並び順どおり） */
+  people: Person[];
   /** RLSにより「家族カレンダー＋自分の個人カレンダー」だけが返る */
   calendars: Calendar[];
 };
@@ -57,7 +61,13 @@ export interface CalendarRepository {
   /** 予定テンプレート（家族で共有） */
   listTemplates(familyId: string): Promise<EventTemplate[]>;
   createTemplate(template: NewEventTemplate): Promise<EventTemplate>;
+  updateTemplate(id: string, patch: Partial<NewEventTemplate>): Promise<void>;
   deleteTemplate(id: string): Promise<void>;
+
+  /** 「誰の予定？」の人。削除するとその人の予定・テンプレートは「みんな」になる */
+  createPerson(familyId: string, input: PersonInput): Promise<Person>;
+  updatePerson(id: string, input: PersonInput): Promise<void>;
+  deletePerson(id: string): Promise<void>;
 
   listWeather(familyId: string, fromKey: string, toKey: string): Promise<WeatherDaily[]>;
 

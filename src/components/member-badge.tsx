@@ -16,19 +16,21 @@ export function MemberBadge({
 }) {
   const t = useTheme();
   const medium = size === 'medium';
+  // 未指定なら何も出さない
+  if (!person) return null;
   return (
     <View
-      accessibilityLabel={`${person ? person.name : 'みんな'}の予定`}
+      accessibilityLabel={`${person.name}の予定`}
       style={[
         styles.badge,
         medium && styles.badgeMedium,
-        { backgroundColor: person ? person.color : t.border },
+        { backgroundColor: person.color },
         outlined && styles.outlined,
       ]}>
       <Text
         numberOfLines={1}
-        style={[styles.text, medium && styles.textMedium, { color: person ? '#fff' : t.textSecondary }]}>
-        {person ? person.name : 'みんな'}
+        style={[styles.text, medium && styles.textMedium, { color: '#fff' }]}>
+        {person.name}
       </Text>
     </View>
   );

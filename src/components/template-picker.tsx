@@ -54,7 +54,7 @@ export function TemplatePicker({
   const personOf = (id: string | null) => (id ? people.find((p) => p.id === id) : undefined);
   const subtitle = (tpl: EventTemplate) =>
     [
-      personOf(tpl.member_id)?.name ?? 'みんな',
+      personOf(tpl.member_id)?.name,
       tpl.rrule ? describeRepeat(tpl.rrule) : null,
       tpl.all_day ? '終日' : tpl.start_time,
     ]

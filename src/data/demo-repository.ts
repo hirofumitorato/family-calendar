@@ -20,6 +20,7 @@ const FAMILY_CAL = 'demo-cal-family';
 const MY_CAL = 'demo-cal-me';
 const PARTNER = 'demo-2';
 const KID = 'demo-3';
+const ALL = 'demo-all';
 
 function at(base: Date, dayOffset: number, h: number, m = 0): Date {
   const d = addDays(startOfDay(base), dayOffset);
@@ -49,7 +50,7 @@ function seedEvents(): CalendarEvent[] {
     exdates: [],
     icon: null,
     remind_minutes_before: [],
-    member_id: null,
+    member_id: ALL,
     ...extra,
   });
 
@@ -119,8 +120,8 @@ export function createDemoRepository(): CalendarRepository {
     ...extra,
   });
   let templates: EventTemplate[] = [
-    tpl('t1', '家事', '燃えるゴミ', '🗑️', null, '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=MO,TH'),
-    tpl('t2', '家事', '資源ゴミ', '♻️', null, '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=WE'),
+    tpl('t1', '家事', '燃えるゴミ', '🗑️', ALL, '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=MO,TH'),
+    tpl('t2', '家事', '資源ゴミ', '♻️', ALL, '08:00', '08:30', 'FREQ=WEEKLY;BYDAY=WE'),
     tpl('t3', '習い事', 'スイミング', '🏊', KID, '16:00', '17:00', 'FREQ=WEEKLY;BYDAY=WE', {
       remind_minutes_before: [60],
       location: '市民プール',
@@ -136,6 +137,7 @@ export function createDemoRepository(): CalendarRepository {
     sort_order: i,
   }));
   let people: Person[] = [
+    { id: ALL, family_id: FAMILY_ID, name: 'みんな', color: '#9E9E9E', user_id: null, sort_order: -1 },
     { id: ME, family_id: FAMILY_ID, name: 'わたし', color: '#3B82F6', user_id: ME, sort_order: 0 },
     { id: PARTNER, family_id: FAMILY_ID, name: 'パートナー', color: '#EC4899', user_id: PARTNER, sort_order: 1 },
     { id: KID, family_id: FAMILY_ID, name: 'こども', color: '#10B981', user_id: null, sort_order: 2 },

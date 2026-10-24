@@ -56,7 +56,7 @@ export function PeopleSheet({ visible, onClose }: { visible: boolean; onClose: (
 
   const remove = async (p: Person) => {
     const ok = await confirm(`「${p.name}」を削除しますか？`, {
-      message: 'この人の予定とテンプレートは「みんな」の予定になります',
+      message: 'この項目を選んでいた予定とテンプレートは「未指定」になります（予定は消えません）',
       okText: '削除',
       destructive: true,
     });
@@ -84,7 +84,7 @@ export function PeopleSheet({ visible, onClose }: { visible: boolean; onClose: (
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditing(null)} accessibilityLabel="編集をやめる" />
           <View style={[styles.topSheet, { backgroundColor: t.background, paddingTop: insets.top + 12 }]}>
             <Text style={[styles.title, { color: t.text, marginBottom: 12 }]}>
-              {editing.id ? '人を編集' : '人を追加'}
+              {editing.id ? '編集' : '追加（人・グループ）'}
             </Text>
             <PersonEditor
               value={editing}
@@ -101,7 +101,7 @@ export function PeopleSheet({ visible, onClose }: { visible: boolean; onClose: (
           <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="閉じる" />
           <View style={[styles.sheet, { backgroundColor: t.background }]}>
             <View style={styles.header}>
-              <Text style={[styles.title, { color: t.text }]}>誰の予定？に出る人</Text>
+              <Text style={[styles.title, { color: t.text }]}>誰の予定？の項目</Text>
               <Pressable onPress={close} hitSlop={10} accessibilityLabel="完了">
                 <Text style={{ color: t.accent, fontSize: 16, fontWeight: '700' }}>完了</Text>
               </Pressable>
@@ -127,7 +127,7 @@ export function PeopleSheet({ visible, onClose }: { visible: boolean; onClose: (
                 onPress={startNew}
                 accessibilityLabel="人を追加"
                 style={[styles.addRow, { borderColor: t.border }]}>
-                <Text style={{ color: t.accent, fontSize: 15, fontWeight: '600' }}>＋ 人を追加</Text>
+                <Text style={{ color: t.accent, fontSize: 15, fontWeight: '600' }}>＋ 追加（人・グループ）</Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -158,7 +158,7 @@ function PersonEditor({
       <TextInput
         value={value.name}
         onChangeText={(name) => onChange({ ...value, name })}
-        placeholder="名前（例：パパ、ゆうと）"
+        placeholder="名前（例：パパ、ゆうと、みんな、子どもたち）"
         placeholderTextColor={t.textMuted}
         autoFocus
         accessibilityLabel="名前"

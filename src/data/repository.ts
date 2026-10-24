@@ -75,7 +75,7 @@ export interface CalendarRepository {
   renameGenre(genre: Genre, name: string): Promise<void>;
   deleteGenre(genre: Genre): Promise<void>;
 
-  /** 「誰の予定？」の人。削除するとその人の予定・テンプレートは「みんな」になる */
+  /** 「誰の予定？」の人（「みんな」などのグループも含む）。削除するとその人の予定・テンプレートは未指定になる */
   createPerson(familyId: string, input: PersonInput): Promise<Person>;
   updatePerson(id: string, input: PersonInput): Promise<void>;
   deletePerson(id: string): Promise<void>;

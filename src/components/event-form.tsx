@@ -49,7 +49,6 @@ const REMINDERS = [
 ];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const EVERYONE = '__everyone__';
 
 export type TemplateInput = Omit<NewEventTemplate, 'family_id'>;
 
@@ -99,7 +98,10 @@ export function EventForm(props: Props) {
 
   const [title, setTitle] = useState(initial?.title ?? tpl0?.title ?? '');
   const [icon, setIcon] = useState<string | null>(initial?.icon ?? tpl0?.icon ?? null);
-  const [memberId, setMemberId] = useState<string | null>(initial?.member_id ?? tpl0?.member_id ?? null);
+  // 新しい予定は、並び順が先頭の項目（ふつうは「みんな」）を選んだ状態から始める
+  const [memberId, setMemberId] = useState<string | null>(
+    initial ? initial.member_id : tpl0 ? tpl0.member_id : people[0]?.id ?? null,
+  );
   const [calendarId, setCalendarId] = useState(
     initial?.calendar_id ?? tpl0?.calendar_id ?? defaultCalendarId ?? calendars[0]?.id,
   );
@@ -142,7 +144,7 @@ export function EventForm(props: Props) {
     setEndTime(end.endTime);
   };
 
-  // 選んでいた人が削除されたら「みんな」に戻す
+  // 選んでいた人が削除されたら未指定に戻す
   useEffect(() => {
     if (memberId && !people.some((p) => p.id === memberId)) setMemberId(null);
   }, [people, memberId]);
@@ -364,13 +366,11 @@ export function EventForm(props: Props) {
             <Text style={{ color: t.accent, fontSize: 13, fontWeight: '600' }}>＋ 追加・編集</Text>
           </Pressable>
         </View>
+        {/* 選んでいる項目をもう一度押すと未指定 */}
         <Chips
-          options={[
-            { label: '👪 みんな', value: EVERYONE },
-            ...people.map((p) => ({ label: p.name, value: p.id, color: p.color })),
-          ]}
-          value={memberId ?? EVERYONE}
-          onChange={(v) => setMemberId(v === EVERYONE ? null : v)}
+          options={people.map((p) => ({ label: p.name, value: p.id as string | null, color: p.color }))}
+          value={memberId}
+          onChange={(v) => setMemberId(v === memberId ? null : v)}
         />
 
 

@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
@@ -10,6 +10,7 @@ import type { CalendarEvent } from '@/lib/types';
 import { useApp } from '@/state/app-store';
 
 export default function EditEventScreen() {
+  const router = useRouter();
   // occurrence: 日の詳細からタップした回の開始時刻（繰り返し予定の「この予定のみ削除」に使う）
   const { id, occurrence } = useLocalSearchParams<{ id: string; occurrence?: string }>();
   const { repo, ctx, bumpRevision } = useApp();

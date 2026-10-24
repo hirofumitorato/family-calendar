@@ -32,7 +32,8 @@ function RootStack() {
   }
 
   return (
-    <Stack>
+    // SDK 58 から iOS 26+ ではヘッダーが既定で透明（内容がヘッダーの下に潜る）になったため、不透明に固定する
+    <Stack screenOptions={{ headerTransparent: false }}>
       <Stack.Protected guard={status === 'signed-out'}>
         <Stack.Screen name="sign-in" options={{ title: 'ログイン' }} />
       </Stack.Protected>

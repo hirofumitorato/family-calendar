@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,7 @@ import type { EventOccurrence } from '@/lib/types';
 import { useApp, useMonthData } from '@/state/app-store';
 
 export default function CalendarScreen() {
+  const router = useRouter();
   const t = useTheme();
   const { repo, defaultCalendar, bumpRevision } = useApp();
   const [cursor, setCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));

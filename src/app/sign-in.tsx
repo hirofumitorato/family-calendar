@@ -55,7 +55,8 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, padding: 24, justifyContent: 'center', gap: 12 },
+  // 入力欄がキーボードと重ならないよう、中央ではなく画面の上のほうに置く
+  root: { flex: 1, padding: 24, paddingTop: 72, gap: 12 },
   title: { fontSize: 24, fontWeight: '800', textAlign: 'center', marginBottom: 16 },
   input: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
   primary: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },

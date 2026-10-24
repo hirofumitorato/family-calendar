@@ -49,4 +49,5 @@ Docs: https://docs.expo.dev/eas/index.md
 - Weather: Open-Meteo via `supabase/functions/fetch-weather` → `weather_daily`. The app never calls Open-Meteo directly.
 - Never call `Alert.alert` directly — it is a no-op on web. Use `notify` / `confirm` from `src/utils/dialog.ts`.
 - Colors come from `useTheme()`; the light/dark choice lives in `src/state/theme.tsx` (user setting), not the OS directly.
+- Inputs must never sit under the software keyboard: in scroll forms use `useKeyboardFocusScroll` (`src/hooks/use-keyboard-focus-scroll.ts`) on every TextInput; put modal editors with inputs at the top of the screen, not in bottom sheets.
 - Before finishing: `npm run typecheck && npm test`.

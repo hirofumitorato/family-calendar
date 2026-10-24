@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MEMBER_COLORS } from '@/constants/stickers';
 import { useTheme } from '@/hooks/use-theme';
@@ -19,6 +20,7 @@ export function PeopleSheet({ visible, onClose }: { visible: boolean; onClose: (
   const people = ctx?.people ?? [];
   const [editing, setEditing] = useState<Editing>(null);
   const [busy, setBusy] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const close = () => {
     setEditing(null);
@@ -69,64 +71,65 @@ export function PeopleSheet({ visible, onClose }: { visible: boolean; onClose: (
     }
   };
 
+  const editingPerson = editing?.id ? people.find((p) => p.id === editing.id) : undefined;
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="閉じる" />
-      <View style={[styles.sheet, { backgroundColor: t.background }]}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: t.text }]}>誰の予定？に出る人</Text>
-          <Pressable onPress={close} hitSlop={10} accessibilityLabel="完了">
-            <Text style={{ color: t.accent, fontSize: 16, fontWeight: '700' }}>完了</Text>
-          </Pressable>
-        </View>
-
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
-          {people.map((p) =>
-            editing?.id === p.id ? (
-              <PersonEditor
-                key={p.id}
-                value={editing}
-                onChange={setEditing}
-                onSave={save}
-                onCancel={() => setEditing(null)}
-                onDelete={() => remove(p)}
-                busy={busy}
-              />
-            ) : (
-              <Pressable
-                key={p.id}
-                accessibilityLabel={`${p.name} を編集`}
-                onPress={() => setEditing({ id: p.id, name: p.name, color: p.color })}
-                style={({ pressed }) => [
-                  styles.row,
-                  { backgroundColor: pressed ? t.selected : t.backgroundElement },
-                ]}>
-                <View style={[styles.dot, { backgroundColor: p.color }]} />
-                <Text style={[styles.name, { color: t.text }]}>{p.name}</Text>
-                {p.user_id && <Text style={[styles.badge, { color: t.textSecondary }]}>アカウントあり</Text>}
-                <Text style={{ color: t.textSecondary }}>編集 ›</Text>
-              </Pressable>
-            ),
-          )}
-
-          {editing?.id === null ? (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+      {editing ? (
+        // 編集中：キーボードと重ならないよう、編集エリアを画面の上半分に出す
+        <View style={styles.topWrap}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditing(null)} accessibilityLabel="編集をやめる" />
+          <View style={[styles.topSheet, { backgroundColor: t.background, paddingTop: insets.top + 12 }]}>
+            <Text style={[styles.title, { color: t.text, marginBottom: 12 }]}>
+              {editing.id ? '人を編集' : '人を追加'}
+            </Text>
             <PersonEditor
               value={editing}
               onChange={setEditing}
               onSave={save}
               onCancel={() => setEditing(null)}
+              onDelete={editingPerson ? () => remove(editingPerson) : undefined}
               busy={busy}
             />
-          ) : (
-            <Pressable
-              onPress={startNew}
-              accessibilityLabel="人を追加"
-              style={[styles.addRow, { borderColor: t.border }]}>
-              <Text style={{ color: t.accent, fontSize: 15, fontWeight: '600' }}>＋ 人を追加</Text>
-            </Pressable>
-          )}
-        </ScrollView>
-      </View>
+          </View>
+        </View>
+      ) : (
+        <>
+          <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="閉じる" />
+          <View style={[styles.sheet, { backgroundColor: t.background }]}>
+            <View style={styles.header}>
+              <Text style={[styles.title, { color: t.text }]}>誰の予定？に出る人</Text>
+              <Pressable onPress={close} hitSlop={10} accessibilityLabel="完了">
+                <Text style={{ color: t.accent, fontSize: 16, fontWeight: '700' }}>完了</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+              {people.map((p) => (
+                <Pressable
+                  key={p.id}
+                  accessibilityLabel={`${p.name} を編集`}
+                  onPress={() => setEditing({ id: p.id, name: p.name, color: p.color })}
+                  style={({ pressed }) => [
+                    styles.row,
+                    { backgroundColor: pressed ? t.selected : t.backgroundElement },
+                  ]}>
+                  <View style={[styles.dot, { backgroundColor: p.color }]} />
+                  <Text style={[styles.name, { color: t.text }]}>{p.name}</Text>
+                  {p.user_id && <Text style={[styles.badge, { color: t.textSecondary }]}>アカウントあり</Text>}
+                  <Text style={{ color: t.textSecondary }}>編集 ›</Text>
+                </Pressable>
+              ))}
+              <Pressable
+                onPress={startNew}
+                accessibilityLabel="人を追加"
+                style={[styles.addRow, { borderColor: t.border }]}>
+                <Text style={{ color: t.accent, fontSize: 15, fontWeight: '600' }}>＋ 人を追加</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </>
+      )}
     </Modal>
   );
 }
@@ -193,6 +196,8 @@ function PersonEditor({
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: { maxHeight: '75%', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
+  topWrap: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+  topSheet: { borderBottomLeftRadius: 16, borderBottomRightRadius: 16, paddingHorizontal: 16, paddingBottom: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   title: { fontSize: 16, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, padding: 14, marginBottom: 8 },

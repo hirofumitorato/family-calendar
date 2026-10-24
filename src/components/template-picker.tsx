@@ -60,21 +60,17 @@ export function TemplatePicker({
 
   return (
     <View>
-      <View style={styles.row}>
-        <Dropdown
-          label="ジャンル"
-          value={genre === ALL ? 'すべて' : genre}
-          onPress={() => setOpen('genre')}
-          style={{ flex: 2 }}
-        />
-        <Dropdown
-          label="テンプレート"
-          value={applied ? `${applied.icon ?? ''}${applied.title}` : '選択してください'}
-          placeholder={!applied}
-          onPress={() => setOpen('template')}
-          style={{ flex: 3 }}
-        />
-      </View>
+      {/* プルダウンは1つ。タップ → ジャンル → テンプレートの順に選ぶ */}
+      <Dropdown
+        label="テンプレート"
+        value={
+          applied
+            ? `${applied.category?.trim() || UNCATEGORIZED} › ${applied.icon ?? ''}${applied.title}`
+            : 'ジャンルから選ぶ'
+        }
+        placeholder={!applied}
+        onPress={() => setOpen('genre')}
+      />
 
       {/* 1段目：ジャンル */}
       <Sheet visible={open === 'genre'} title="ジャンルを選ぶ" onClose={() => setOpen(null)}>

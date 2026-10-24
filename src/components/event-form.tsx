@@ -1,8 +1,6 @@
 import { Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +14,7 @@ import { PeopleSheet } from '@/components/people-sheet';
 import { StickerPicker } from '@/components/sticker-picker';
 import { TemplatePicker, UNCATEGORIZED, templateGenres } from '@/components/template-picker';
 import { EVENT_ICON_GROUPS } from '@/constants/stickers';
+import { useKeyboardFocusScroll } from '@/hooks/use-keyboard-focus-scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { WEEKDAY_LABELS, formatTime, parseDateKey, parseTime, toDateKey } from '@/lib/date';
 import { buildRepeat, parseRepeat, type RepeatFreq } from '@/lib/repeat';
@@ -116,6 +115,8 @@ export function EventForm(props: Props) {
   const [iconPicker, setIconPicker] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 入力欄がキーボードに隠れないよう、フォーカスした欄を画面の上のほうへスクロールする
+  const kb = useKeyboardFocusScroll();
 
   const genres = useMemo(() => templateGenres(templates).filter((g) => g !== UNCATEGORIZED), [templates]);
 
@@ -239,7 +240,7 @@ export function EventForm(props: Props) {
   const showGenre = isTemplate || saveAsTemplate;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined}>
+    <View style={{ flex: 1 }}>
       {/* キーボードで下の保存ボタンが隠れても押せるよう、ヘッダー右にも保存を置く */}
       <Stack.Screen
         options={{
@@ -251,11 +252,12 @@ export function EventForm(props: Props) {
         }}
       />
       <ScrollView
+        ref={kb.scrollRef}
         style={{ backgroundColor: t.background }}
-        contentContainerStyle={styles.root}
+        // キーボードが出ている間は、その高さ分の余白を足して一番下の欄も上まで動かせるようにする
+        contentContainerStyle={[styles.root, { paddingBottom: 48 + kb.keyboardHeight }]}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets>
+        keyboardDismissMode="interactive">
         {picker && (
           <View style={{ marginBottom: 16 }}>
             <Text style={[label, { marginTop: 0 }]}>テンプレートから入力</Text>
@@ -270,7 +272,7 @@ export function EventForm(props: Props) {
           </View>
         )}
 
-        <View style={styles.titleRow}>
+        <View style={styles.titleRow} {...kb.field('title')}>
           <Pressable
             onPress={() => setIconPicker(true)}
             accessibilityLabel="アイコンを選ぶ"
@@ -280,6 +282,7 @@ export function EventForm(props: Props) {
           <TextInput
             value={title}
             onChangeText={setTitle}
+            onFocus={kb.focus('title')}
             placeholder={isTemplate ? 'テンプレート名（予定のタイトル）' : 'タイトル'}
             placeholderTextColor={t.textMuted}
             style={[...input, { flex: 1, fontSize: 18 }]}
@@ -311,6 +314,8 @@ export function EventForm(props: Props) {
               </View>
             )}
             <TextInput
+              {...kb.field('genre')}
+              onFocus={kb.focus('genre')}
               value={genre}
               onChangeText={setGenre}
               placeholder="新しいジャンル（例：習い事、家事、病院）"
@@ -355,27 +360,27 @@ export function EventForm(props: Props) {
           !allDay && (
             <>
               <Text style={label}>時間</Text>
-              <View style={[styles.row, { alignItems: 'center' }]}>
-                <TextInput value={startTime} onChangeText={setStartTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
+              <View style={[styles.row, { alignItems: 'center' }]} {...kb.field('time')}>
+                <TextInput value={startTime} onChangeText={setStartTime} onFocus={kb.focus('time')} placeholder="HH:mm" style={[...input, styles.timeInput]} />
                 <Text style={{ color: t.textSecondary }}>〜</Text>
-                <TextInput value={endTime} onChangeText={setEndTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
+                <TextInput value={endTime} onChangeText={setEndTime} onFocus={kb.focus('time')} placeholder="HH:mm" style={[...input, styles.timeInput]} />
               </View>
             </>
           )
         ) : (
           <>
             <Text style={label}>開始</Text>
-            <View style={styles.row}>
-              <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
+            <View style={styles.row} {...kb.field('start')}>
+              <TextInput value={startDate} onChangeText={setStartDate} onFocus={kb.focus('start')} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
               {!allDay && (
-                <TextInput value={startTime} onChangeText={setStartTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
+                <TextInput value={startTime} onChangeText={setStartTime} onFocus={kb.focus('start')} placeholder="HH:mm" style={[...input, styles.timeInput]} />
               )}
             </View>
             <Text style={label}>終了</Text>
-            <View style={styles.row}>
-              <TextInput value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
+            <View style={styles.row} {...kb.field('end')}>
+              <TextInput value={endDate} onChangeText={setEndDate} onFocus={kb.focus('end')} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
               {!allDay && (
-                <TextInput value={endTime} onChangeText={setEndTime} placeholder="HH:mm" style={[...input, styles.timeInput]} />
+                <TextInput value={endTime} onChangeText={setEndTime} onFocus={kb.focus('end')} placeholder="HH:mm" style={[...input, styles.timeInput]} />
               )}
             </View>
           </>
@@ -415,10 +420,20 @@ export function EventForm(props: Props) {
         <Chips options={REMINDERS} value={remind} onChange={setRemind} eq={(a, b) => a.join() === b.join()} />
 
         <Text style={label}>場所</Text>
-        <TextInput value={location} onChangeText={setLocation} placeholder="場所" placeholderTextColor={t.textMuted} style={input} />
+        <TextInput
+          {...kb.field('location')}
+          onFocus={kb.focus('location')}
+          value={location}
+          onChangeText={setLocation}
+          placeholder="場所"
+          placeholderTextColor={t.textMuted}
+          style={input}
+        />
 
         <Text style={label}>メモ</Text>
         <TextInput
+          {...kb.field('memo')}
+          onFocus={kb.focus('memo')}
           value={memo}
           onChangeText={setMemo}
           placeholder="メモ"
@@ -465,7 +480,7 @@ export function EventForm(props: Props) {
         onClose={() => setIconPicker(false)}
       />
       <PeopleSheet visible={peopleOpen} onClose={() => setPeopleOpen(false)} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -6,6 +6,7 @@ import type {
   EventTemplate,
   Family,
   FamilyMember,
+  Genre,
   NewCalendarEvent,
   NewEventTemplate,
   Person,
@@ -67,6 +68,12 @@ export interface CalendarRepository {
   createTemplate(template: NewEventTemplate): Promise<EventTemplate>;
   updateTemplate(id: string, patch: Partial<NewEventTemplate>): Promise<void>;
   deleteTemplate(id: string): Promise<void>;
+
+  /** テンプレートのジャンル。名前を変えるとテンプレートのジャンルも変わり、削除するとテンプレートは未分類になる */
+  listGenres(familyId: string): Promise<Genre[]>;
+  createGenre(familyId: string, name: string): Promise<Genre>;
+  renameGenre(genre: Genre, name: string): Promise<void>;
+  deleteGenre(genre: Genre): Promise<void>;
 
   /** 「誰の予定？」の人。削除するとその人の予定・テンプレートは「みんな」になる */
   createPerson(familyId: string, input: PersonInput): Promise<Person>;

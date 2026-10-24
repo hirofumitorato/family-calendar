@@ -9,6 +9,7 @@ import type {
   EventTemplate,
   Family,
   FamilyMember,
+  Genre,
   Person,
   WeatherDaily,
 } from '@/lib/types';
@@ -191,6 +192,47 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
     },
     async deleteTemplate(id) {
       check(await sb.from('event_templates').delete().eq('id', id));
+    },
+
+    async listGenres(familyId) {
+      return check<Genre[]>(
+        await sb.from('template_genres').select('*').eq('family_id', familyId).order('sort_order').order('created_at'),
+      );
+    },
+    async createGenre(familyId, name) {
+      const { data: last } = await sb
+        .from('template_genres')
+        .select('sort_order')
+        .eq('family_id', familyId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      return check<Genre>(
+        await sb
+          .from('template_genres')
+          .insert({ family_id: familyId, name, sort_order: (last?.[0]?.sort_order ?? -1) + 1 })
+          .select('*')
+          .single(),
+      );
+    },
+    async renameGenre(genre, name) {
+      check(await sb.from('template_genres').update({ name }).eq('id', genre.id));
+      check(
+        await sb
+          .from('event_templates')
+          .update({ category: name })
+          .eq('family_id', genre.family_id)
+          .eq('category', genre.name),
+      );
+    },
+    async deleteGenre(genre) {
+      check(await sb.from('template_genres').delete().eq('id', genre.id));
+      check(
+        await sb
+          .from('event_templates')
+          .update({ category: null })
+          .eq('family_id', genre.family_id)
+          .eq('category', genre.name),
+      );
     },
 
     async createPerson(familyId, input) {

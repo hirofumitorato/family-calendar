@@ -1,10 +1,12 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { dayColorFill } from '@/constants/stickers';
 import type { ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { WEEKDAY_LABELS, buildMonthGrid, isSameDay, toDateKey, weeksInMonth } from '@/lib/date';
+import { WEEKDAY_LABELS, buildMonthGrid, isSameDay, parseDateKey, toDateKey, weeksInMonth } from '@/lib/date';
+import { bestDirectionNames } from '@/lib/kaiun';
+import { birthStars } from '@/lib/kyusei';
 import { getHolidayName } from '@/lib/holidays';
 import { getRokuyo } from '@/lib/rokuyo';
 import type { MonthData } from '@/state/app-store';
@@ -34,7 +36,12 @@ export function MonthGrid({
   const t = useTheme();
   const days = buildMonthGrid(year, month);
   const weeks = weeksInMonth(year, month);
-  const { rokuyo: showRokuyo } = useCalendarPrefs();
+  const { rokuyo: showRokuyo, kaiun } = useCalendarPrefs();
+  // 開運カレンダーがオンなら、その人の本命星・月命星で毎日の最大吉方を出す
+  const stars = useMemo(
+    () => (kaiun ? birthStars(parseDateKey(kaiun.birthDate)) : null),
+    [kaiun],
+  );
   const today = new Date();
 
   return (
@@ -68,6 +75,11 @@ export function MonthGrid({
                 onPress={onSelect}
                 onLongPress={onLongPress}
                 showRokuyo={showRokuyo}
+                bestDirs={
+                  stars && d.getMonth() === month
+                    ? bestDirectionNames(d, stars.honmei, stars.getsumei).join('・')
+                    : ''
+                }
               />
             );
           })}
@@ -88,6 +100,7 @@ const DayCell = memo(function DayCell({
   onPress,
   onLongPress,
   showRokuyo,
+  bestDirs,
 }: {
   date: Date;
   dateKey: string;
@@ -99,6 +112,8 @@ const DayCell = memo(function DayCell({
   onPress: (d: Date) => void;
   onLongPress?: (d: Date) => void;
   showRokuyo: boolean;
+  /** その日の最大吉方（例：'北・南東'）。空なら表示しない */
+  bestDirs: string;
 }) {
   const rokuyo = showRokuyo ? getRokuyo(date) : null;
   const holiday = getHolidayName(dateKey);
@@ -185,6 +200,14 @@ const DayCell = memo(function DayCell({
       {occs.length > shown && (
         <Text style={[styles.more, { color: t.textSecondary }]}>+{occs.length - shown}</Text>
       )}
+      {bestDirs !== '' && (
+        <Text
+          style={[styles.bestDirs, { color: t.accent, backgroundColor: t.background }]}
+          numberOfLines={1}
+          accessibilityLabel={`最大吉方 ${bestDirs}`}>
+          {bestDirs}
+        </Text>
+      )}
     </Pressable>
   );
 });
@@ -212,4 +235,16 @@ const styles = StyleSheet.create({
   chip: { marginTop: 1.5, paddingHorizontal: 2, borderRadius: 3 },
   chipText: { fontSize: 10, lineHeight: 14, fontWeight: '600' },
   more: { fontSize: 9, lineHeight: 11, paddingHorizontal: 2 },
+  bestDirs: {
+    position: 'absolute',
+    right: 1,
+    bottom: 1,
+    maxWidth: '100%',
+    fontSize: 7,
+    lineHeight: 9,
+    fontWeight: '700',
+    paddingHorizontal: 1,
+    borderRadius: 2,
+    opacity: 0.9,
+  },
 });

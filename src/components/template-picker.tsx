@@ -9,9 +9,9 @@ import { confirm } from '@/utils/dialog';
 export const UNCATEGORIZED = '未分類';
 const ALL = '__all__';
 
-/** テンプレートのジャンル一覧（登録順。未分類は最後） */
-export function templateGenres(templates: EventTemplate[]): string[] {
-  const seen: string[] = [];
+/** テンプレートのジャンル一覧（ジャンル設定の順 → テンプレートにだけあるもの → 未分類） */
+export function templateGenres(templates: EventTemplate[], order: string[] = []): string[] {
+  const seen: string[] = [...order];
   for (const t of templates) {
     const g = t.category?.trim() || UNCATEGORIZED;
     if (!seen.includes(g)) seen.push(g);
@@ -25,6 +25,7 @@ export function templateGenres(templates: EventTemplate[]): string[] {
  */
 export function TemplatePicker({
   templates,
+  genres: genreOrder = [],
   people,
   onApply,
   onEdit,
@@ -32,6 +33,8 @@ export function TemplatePicker({
   onCreate,
 }: {
   templates: EventTemplate[];
+  /** ジャンル設定の並び順 */
+  genres?: string[];
   people: Person[];
   onApply: (t: EventTemplate) => void;
   onEdit: (t: EventTemplate) => void;
@@ -40,7 +43,7 @@ export function TemplatePicker({
   onCreate: (genre: string | null) => void;
 }) {
   const t = useTheme();
-  const genres = useMemo(() => templateGenres(templates), [templates]);
+  const genres = useMemo(() => templateGenres(templates, genreOrder), [templates, genreOrder]);
   const [genre, setGenre] = useState<string>(ALL);
   const [applied, setApplied] = useState<EventTemplate | null>(null);
   const [open, setOpen] = useState<'genre' | 'template' | null>(null);

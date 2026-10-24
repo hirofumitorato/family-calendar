@@ -5,6 +5,7 @@ import type {
   DayColor,
   DaySticker,
   EventTemplate,
+  Genre,
   NewCalendarEvent,
   Person,
   WeatherDaily,
@@ -128,6 +129,12 @@ export function createDemoRepository(): CalendarRepository {
     tpl('t5', '病院', '歯医者', '🦷', ME, '15:00', '16:00', null, { remind_minutes_before: [60] }),
     tpl('t6', '仕事', '在宅勤務', '💻', PARTNER, null, null, 'FREQ=WEEKLY;BYDAY=FR'),
   ];
+  let genres: Genre[] = ['家事', '習い事', '病院', '仕事'].map((name, i) => ({
+    id: `g${i + 1}`,
+    family_id: FAMILY_ID,
+    name,
+    sort_order: i,
+  }));
   let people: Person[] = [
     { id: ME, family_id: FAMILY_ID, name: 'わたし', color: '#3B82F6', user_id: ME, sort_order: 0 },
     { id: PARTNER, family_id: FAMILY_ID, name: 'パートナー', color: '#EC4899', user_id: PARTNER, sort_order: 1 },
@@ -248,6 +255,28 @@ export function createDemoRepository(): CalendarRepository {
     },
     async deleteTemplate(id) {
       templates = templates.filter((t) => t.id !== id);
+    },
+
+    async listGenres() {
+      return [...genres].sort((a, b) => a.sort_order - b.sort_order);
+    },
+    async createGenre(familyId, name) {
+      const created: Genre = {
+        id: `g${seq++}`,
+        family_id: familyId,
+        name,
+        sort_order: Math.max(-1, ...genres.map((g) => g.sort_order)) + 1,
+      };
+      genres = [...genres, created];
+      return created;
+    },
+    async renameGenre(genre, name) {
+      genres = genres.map((g) => (g.id === genre.id ? { ...g, name } : g));
+      templates = templates.map((t) => (t.category === genre.name ? { ...t, category: name } : t));
+    },
+    async deleteGenre(genre) {
+      genres = genres.filter((g) => g.id !== genre.id);
+      templates = templates.map((t) => (t.category === genre.name ? { ...t, category: null } : t));
     },
 
     async createPerson(familyId, input) {

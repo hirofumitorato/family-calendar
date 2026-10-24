@@ -78,3 +78,25 @@ export function weeksInMonth(year: number, month: number): number {
   const days = new Date(year, month + 1, 0).getDate();
   return Math.ceil((firstDow + days) / 7);
 }
+
+/**
+ * 開始を変えたとき、終了が開始より前にならないよう調整する。
+ * 終了が開始以前になったら、元の長さ（なければ1時間）を保って終了をずらす。
+ */
+export function keepEndAfterStart(
+  prev: { startDate: string; startTime: string; endDate: string; endTime: string },
+  next: { startDate: string; startTime: string },
+): { endDate: string; endTime: string } {
+  const at = (d: string, t: string) => {
+    const [y, m, day] = d.split('-').map(Number);
+    const [h, min] = t.split(':').map(Number);
+    return new Date(y, m - 1, day, h, min);
+  };
+  const ps = at(prev.startDate, prev.startTime);
+  const pe = at(prev.endDate, prev.endTime);
+  const ns = at(next.startDate, next.startTime);
+  if (pe > ns) return { endDate: prev.endDate, endTime: prev.endTime };
+  const length = pe > ps ? pe.getTime() - ps.getTime() : 60 * 60 * 1000;
+  const ne = new Date(ns.getTime() + length);
+  return { endDate: toDateKey(ne), endTime: formatTime(ne) };
+}

@@ -175,3 +175,57 @@ export function dailyDirections(date: Date, honmei: number, getsumei?: number): 
   });
   return { center, kanshi: dayKanshi(date), tendo, directions };
 }
+
+/** 盤の上で、本命星（と月命星）にとって吉の方位を調べる（破＝その盤の破の方位） */
+function luckyOnBoard(center: number, breakDir: Direction | null, honmei: number, getsumei?: number): Set<Direction> {
+  const b = board(center);
+  const pos = (star: number) => DIRECTIONS.find((d) => b[d] === star);
+  const five = pos(5);
+  const hon = pos(honmei);
+  const getsu = getsumei ? pos(getsumei) : undefined;
+  const good = goodStars(honmei);
+  const out = new Set<Direction>();
+  for (const dir of DIRECTIONS) {
+    const star = b[dir];
+    const home = HOME[star];
+    const bad =
+      dir === five ||
+      (five && dir === OPPOSITE[five]) ||
+      dir === hon ||
+      (hon && dir === OPPOSITE[hon]) ||
+      (getsu && (dir === getsu || dir === OPPOSITE[getsu])) ||
+      dir === breakDir ||
+      (home !== 'C' && dir === OPPOSITE[home]);
+    if (!bad && good.has(star)) out.add(dir);
+  }
+  return out;
+}
+
+/** 年の十二支（立春で切り替え）と月の十二支（寅月=1 → 寅） */
+function yearBranch(kyuseiYear: number): number {
+  return mod(kyuseiYear - 4, 12);
+}
+function monthBranch(month: number): number {
+  return mod(month + 1, 12); // 1=寅(2)
+}
+
+/** 月盤と日盤の中宮が同じ日（方位盤が揃う日） */
+export function isBoardsAligned(date: Date): boolean {
+  const { year, month } = solarMonth(date);
+  return monthStar(year, month) === dayStar(date);
+}
+
+/**
+ * 大開運日：月盤と日盤が揃う日のうち、年盤・月盤・日盤のすべてで本命星にとって吉の方位がある日。
+ * その方位を返す（なければ空配列）。
+ * 五黄が中宮の盤（伏吟）は吉方位として使わない（八雲院の大開運日一覧と同じ扱い）。
+ */
+export function taikaiunDirections(date: Date, honmei: number, getsumei?: number): Direction[] {
+  if (!isBoardsAligned(date)) return [];
+  if (dayStar(date) === 5) return [];
+  const { year, month } = solarMonth(date);
+  const y = luckyOnBoard(yearStar(year), OPPOSITE[BRANCH_DIR[yearBranch(year)]], honmei, getsumei);
+  const m = luckyOnBoard(monthStar(year, month), OPPOSITE[BRANCH_DIR[monthBranch(month)]], honmei, getsumei);
+  const d = luckyOnBoard(dayStar(date), OPPOSITE[BRANCH_DIR[dayKanshiIndex(date) % 12]], honmei, getsumei);
+  return DIRECTIONS.filter((dir) => y.has(dir) && m.has(dir) && d.has(dir));
+}

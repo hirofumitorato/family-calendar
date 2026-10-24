@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MEMBER_COLORS } from '@/constants/stickers';
+import { ColorPalette } from '@/components/color-palette';
+import { PALETTE } from '@/constants/palette';
 import { useTheme } from '@/hooks/use-theme';
 import type { Person } from '@/lib/types';
 import { useApp } from '@/state/app-store';
@@ -29,7 +30,9 @@ export function PeopleSheet({ visible, onClose }: { visible: boolean; onClose: (
 
   const startNew = () => {
     const used = new Set(people.map((p) => p.color));
-    const color = MEMBER_COLORS.find((c) => !used.has(c)) ?? MEMBER_COLORS[0];
+    // まだ誰も使っていない色を、ピンク・青・緑…の順に提案する
+    const suggest = ['#EC4899', '#3B82F6', '#22C55E', '#F97316', '#8B5CF6', '#06B6D4', '#EAB308', ...PALETTE];
+    const color = suggest.find((c) => !used.has(c)) ?? PALETTE[0];
     setEditing({ id: null, name: '', color });
   };
 
@@ -161,16 +164,7 @@ function PersonEditor({
         accessibilityLabel="名前"
         style={[styles.input, { color: t.text, backgroundColor: t.background }]}
       />
-      <View style={styles.colors}>
-        {MEMBER_COLORS.map((c) => (
-          <Pressable
-            key={c}
-            accessibilityLabel={`色 ${c}`}
-            onPress={() => onChange({ ...value, color: c })}
-            style={[styles.swatch, { backgroundColor: c }, value.color === c && styles.swatchActive]}
-          />
-        ))}
-      </View>
+      <ColorPalette value={value.color} onChange={(c) => c && onChange({ ...value, color: c })} size={28} />
       <View style={styles.actions}>
         {onDelete && (
           <Pressable onPress={onDelete} disabled={busy} accessibilityLabel="この人を削除" style={styles.actionBtn}>

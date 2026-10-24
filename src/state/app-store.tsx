@@ -170,7 +170,7 @@ export function useMonthData(year: number, month: number): MonthData {
                 event,
                 calendar,
                 member,
-                color: member?.color ?? calendar.color,
+                color: event.color ?? member?.color ?? calendar.color,
                 start,
                 end,
               });

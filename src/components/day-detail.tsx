@@ -4,9 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { KaiunSheet } from '@/components/kaiun-sheet';
 import { MemberBadge } from '@/components/member-badge';
 import { useTheme } from '@/hooks/use-theme';
-import { formatDayLabel, formatTime, isSameDay, toDateKey } from '@/lib/date';
+import { formatDayLabel, formatTime, isSameDay, parseDateKey, toDateKey } from '@/lib/date';
 import { getHolidayName } from '@/lib/holidays';
 import { getRokuyo } from '@/lib/rokuyo';
+import { bestDirectionNames } from '@/lib/kaiun';
+import { birthStars } from '@/lib/kyusei';
 import type { DaySticker, EventOccurrence } from '@/lib/types';
 import { weatherCodeToIcon } from '@/lib/weather';
 import type { MonthData } from '@/state/app-store';
@@ -38,6 +40,12 @@ export function DayDetail({
   const prefs = useCalendarPrefs();
   const rokuyo = prefs.rokuyo ? getRokuyo(date) : null;
   const [kaiunOpen, setKaiunOpen] = useState(false);
+  const bestDirs = prefs.kaiun
+    ? (() => {
+        const st = birthStars(parseDateKey(prefs.kaiun.birthDate));
+        return bestDirectionNames(date, st.honmei, st.getsumei);
+      })()
+    : [];
 
   const timeLabel = (o: EventOccurrence) => {
     if (o.event.all_day) return '終日';
@@ -86,6 +94,12 @@ export function DayDetail({
             </Pressable>
           ))}
         </View>
+      )}
+
+      {prefs.kaiun && (
+        <Text style={[styles.bestLine, { color: t.textSecondary }]}>
+          🧭 この日の最大吉方：{bestDirs.length ? bestDirs.join('・') : 'なし'}
+        </Text>
       )}
 
       {/* 表示するカレンダー */}
@@ -165,6 +179,7 @@ const styles = StyleSheet.create({
   rokuyo: { fontSize: 13, fontWeight: '600' },
   calRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   calLabel: { fontSize: 12 },
+  bestLine: { fontSize: 13 },
   calChip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
   holiday: { fontSize: 12, marginTop: 2 },
   weather: { flexDirection: 'row', alignItems: 'center', gap: 4 },

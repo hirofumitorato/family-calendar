@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -10,13 +10,17 @@ import {
   View,
 } from 'react-native';
 
+import { ColorPalette } from '@/components/color-palette';
+import { DateTimeRow, type PickerOpen } from '@/components/date-time-picker';
+import { GenreSheet } from '@/components/genre-sheet';
 import { PeopleSheet } from '@/components/people-sheet';
 import { StickerPicker } from '@/components/sticker-picker';
-import { TemplatePicker, UNCATEGORIZED, templateGenres } from '@/components/template-picker';
+import { TemplatePicker } from '@/components/template-picker';
 import { EVENT_ICON_GROUPS } from '@/constants/stickers';
+import { useGenres } from '@/hooks/use-genres';
 import { useKeyboardFocusScroll } from '@/hooks/use-keyboard-focus-scroll';
 import { useTheme } from '@/hooks/use-theme';
-import { WEEKDAY_LABELS, formatTime, parseDateKey, parseTime, toDateKey } from '@/lib/date';
+import { WEEKDAY_LABELS, formatTime, keepEndAfterStart, parseDateKey, parseTime, toDateKey } from '@/lib/date';
 import { buildRepeat, parseRepeat, type RepeatFreq } from '@/lib/repeat';
 import type {
   Calendar,
@@ -108,9 +112,13 @@ export function EventForm(props: Props) {
   const [remind, setRemind] = useState<number[]>(initial?.remind_minutes_before ?? tpl0?.remind_minutes_before ?? []);
   const [location, setLocation] = useState(initial?.location ?? tpl0?.location ?? '');
   const [memo, setMemo] = useState(initial?.memo ?? tpl0?.memo ?? '');
-  const [genre, setGenre] = useState(
-    tpl0?.category ?? (props.mode === 'template' ? props.defaultGenre ?? '' : ''),
+  const [genre, setGenre] = useState<string | null>(
+    tpl0?.category ?? (props.mode === 'template' ? props.defaultGenre ?? null : null),
   );
+  const [color, setColor] = useState<string | null>(initial?.color ?? tpl0?.color ?? null);
+  // 開いている日付・時刻のピッカー（同時に開くのは1つだけ）
+  const [openPicker, setOpenPicker] = useState<{ row: 'start' | 'end'; kind: PickerOpen } | null>(null);
+  const [genreSheet, setGenreSheet] = useState(false);
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [iconPicker, setIconPicker] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
@@ -118,7 +126,19 @@ export function EventForm(props: Props) {
   // 入力欄がキーボードに隠れないよう、フォーカスした欄を画面の上のほうへスクロールする
   const kb = useKeyboardFocusScroll();
 
-  const genres = useMemo(() => templateGenres(templates).filter((g) => g !== UNCATEGORIZED), [templates]);
+  const { genres: genreList } = useGenres();
+  const genres = genreList.map((g) => g.name);
+
+  // 開始を変えたら、終了が開始より前にならないようにずらす
+  const changeStart = (next: { startDate?: string; startTime?: string }) => {
+    const sd = next.startDate ?? startDate;
+    const st = next.startTime ?? startTime;
+    const end = keepEndAfterStart({ startDate, startTime, endDate, endTime }, { startDate: sd, startTime: st });
+    setStartDate(sd);
+    setStartTime(st);
+    setEndDate(end.endDate);
+    setEndTime(end.endTime);
+  };
 
   // 選んでいた人が削除されたら「みんな」に戻す
   useEffect(() => {
@@ -150,10 +170,13 @@ export function EventForm(props: Props) {
     setRemind(tpl.remind_minutes_before);
     setLocation(tpl.location ?? '');
     setMemo(tpl.memo ?? '');
+    setGenre(tpl.category ?? null);
+    setColor(tpl.color ?? null);
   };
 
   const templateValue = (): TemplateInput => ({
-    category: genre.trim() || null,
+    category: genre,
+    color,
     title: title.trim(),
     icon,
     member_id: memberId,
@@ -219,6 +242,7 @@ export function EventForm(props: Props) {
         remind_minutes_before: remind,
         location: location.trim() || null,
         memo: memo.trim() || null,
+        color,
       });
     } catch (err) {
       notify('保存できませんでした', err instanceof Error ? err.message : String(err));
@@ -237,7 +261,6 @@ export function EventForm(props: Props) {
           onDelete: props.onDeleteTemplate ?? (async () => {}),
         }
       : null;
-  const showGenre = isTemplate || saveAsTemplate;
 
   return (
     <View style={{ flex: 1 }}>
@@ -263,6 +286,7 @@ export function EventForm(props: Props) {
             <Text style={[label, { marginTop: 0 }]}>テンプレートから入力</Text>
             <TemplatePicker
               templates={templates}
+              genres={genres}
               people={people}
               onApply={applyTemplate}
               onEdit={picker.onEdit}
@@ -271,6 +295,29 @@ export function EventForm(props: Props) {
             />
           </View>
         )}
+
+        {/* ジャンル（テンプレートとして保存するときに使う）。タイトルの上で選び、追加・編集もできる */}
+        <View style={[styles.labelRow, { marginTop: 0 }]}>
+          <Text style={[styles.label, { color: t.textSecondary, marginTop: 0 }]}>ジャンル</Text>
+          <Pressable onPress={() => setGenreSheet(true)} hitSlop={8} accessibilityLabel="ジャンルを追加・編集">
+            <Text style={{ color: t.accent, fontSize: 13, fontWeight: '600' }}>＋ 追加・編集</Text>
+          </Pressable>
+        </View>
+        <View style={[styles.chips, { marginBottom: 14 }]}>
+          {[null, ...genres].map((g) => {
+            const active = g === genre;
+            return (
+              <Pressable
+                key={g ?? '__none__'}
+                accessibilityLabel={`ジャンル ${g ?? 'なし'} にする`}
+                accessibilityState={{ selected: active }}
+                onPress={() => setGenre(g)}
+                style={[styles.chip, { borderColor: t.border }, active && { backgroundColor: t.accent, borderColor: t.accent }]}>
+                <Text style={{ color: active ? '#fff' : t.text, fontSize: 13 }}>{g ?? 'なし'}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         <View style={styles.titleRow} {...kb.field('title')}>
           <Pressable
@@ -290,42 +337,6 @@ export function EventForm(props: Props) {
           />
         </View>
 
-        {showGenre && (
-          <>
-            <Text style={label}>ジャンル</Text>
-            {genres.length > 0 && (
-              <View style={[styles.chips, { marginBottom: 8 }]}>
-                {genres.map((g) => {
-                  const active = g === genre.trim();
-                  return (
-                    <Pressable
-                      key={g}
-                      accessibilityLabel={`ジャンル ${g} にする`}
-                      onPress={() => setGenre(active ? '' : g)}
-                      style={[
-                        styles.chip,
-                        { borderColor: t.border },
-                        active && { backgroundColor: t.accent, borderColor: t.accent },
-                      ]}>
-                      <Text style={{ color: active ? '#fff' : t.text, fontSize: 13 }}>{g}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-            <TextInput
-              {...kb.field('genre')}
-              onFocus={kb.focus('genre')}
-              value={genre}
-              onChangeText={setGenre}
-              placeholder="新しいジャンル（例：習い事、家事、病院）"
-              placeholderTextColor={t.textMuted}
-              accessibilityLabel="ジャンル名"
-              style={input}
-            />
-          </>
-        )}
-
         <View style={styles.labelRow}>
           <Text style={[styles.label, { color: t.textSecondary }]}>誰の予定？</Text>
           <Pressable onPress={() => setPeopleOpen(true)} hitSlop={8} accessibilityLabel="人を追加・編集">
@@ -340,6 +351,9 @@ export function EventForm(props: Props) {
           value={memberId ?? EVERYONE}
           onChange={(v) => setMemberId(v === EVERYONE ? null : v)}
         />
+
+        <Text style={label}>予定の色（自動＝誰の予定かの色）</Text>
+        <ColorPalette value={color} onChange={setColor} allowNone noneLabel="自動" size={28} />
 
         <Text style={label}>公開範囲</Text>
         <Chips
@@ -356,33 +370,27 @@ export function EventForm(props: Props) {
           <Switch value={allDay} onValueChange={setAllDay} />
         </View>
 
-        {isTemplate ? (
-          !allDay && (
-            <>
-              <Text style={label}>時間</Text>
-              <View style={[styles.row, { alignItems: 'center' }]} {...kb.field('time')}>
-                <TextInput value={startTime} onChangeText={setStartTime} onFocus={kb.focus('time')} placeholder="HH:mm" style={[...input, styles.timeInput]} />
-                <Text style={{ color: t.textSecondary }}>〜</Text>
-                <TextInput value={endTime} onChangeText={setEndTime} onFocus={kb.focus('time')} placeholder="HH:mm" style={[...input, styles.timeInput]} />
-              </View>
-            </>
-          )
-        ) : (
+        {/* 日付はカレンダーから、時刻はダイヤルで選ぶ（テンプレートは時刻だけ） */}
+        {(!isTemplate || !allDay) && (
           <>
-            <Text style={label}>開始</Text>
-            <View style={styles.row} {...kb.field('start')}>
-              <TextInput value={startDate} onChangeText={setStartDate} onFocus={kb.focus('start')} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
-              {!allDay && (
-                <TextInput value={startTime} onChangeText={setStartTime} onFocus={kb.focus('start')} placeholder="HH:mm" style={[...input, styles.timeInput]} />
-              )}
-            </View>
-            <Text style={label}>終了</Text>
-            <View style={styles.row} {...kb.field('end')}>
-              <TextInput value={endDate} onChangeText={setEndDate} onFocus={kb.focus('end')} placeholder="YYYY-MM-DD" style={[...input, styles.dateInput]} />
-              {!allDay && (
-                <TextInput value={endTime} onChangeText={setEndTime} onFocus={kb.focus('end')} placeholder="HH:mm" style={[...input, styles.timeInput]} />
-              )}
-            </View>
+            <DateTimeRow
+              label="開始"
+              date={isTemplate ? null : startDate}
+              time={allDay ? null : startTime}
+              open={openPicker?.row === 'start' ? openPicker.kind : null}
+              onOpen={(kind) => setOpenPicker(kind ? { row: 'start', kind } : null)}
+              onChangeDate={(d) => changeStart({ startDate: d })}
+              onChangeTime={(tm) => changeStart({ startTime: tm })}
+            />
+            <DateTimeRow
+              label="終了"
+              date={isTemplate ? null : endDate}
+              time={allDay ? null : endTime}
+              open={openPicker?.row === 'end' ? openPicker.kind : null}
+              onOpen={(kind) => setOpenPicker(kind ? { row: 'end', kind } : null)}
+              onChangeDate={setEndDate}
+              onChangeTime={setEndTime}
+            />
           </>
         )}
 
@@ -447,7 +455,7 @@ export function EventForm(props: Props) {
             <View style={{ flex: 1 }}>
               <Text style={{ color: t.text, fontSize: 15 }}>この内容をテンプレートに保存</Text>
               <Text style={{ color: t.textSecondary, fontSize: 11, marginTop: 2 }}>
-                ジャンルを付けて保存すると、次回から「テンプレートから入力」で選べます
+                上で選んだジャンルに保存され、次回から「テンプレートから入力」で選べます
               </Text>
             </View>
             <Switch value={saveAsTemplate} onValueChange={setSaveAsTemplate} accessibilityLabel="テンプレートに保存" />
@@ -480,6 +488,7 @@ export function EventForm(props: Props) {
         onClose={() => setIconPicker(false)}
       />
       <PeopleSheet visible={peopleOpen} onClose={() => setPeopleOpen(false)} />
+      <GenreSheet visible={genreSheet} onClose={() => setGenreSheet(false)} />
     </View>
   );
 }

@@ -2,12 +2,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildMonthGrid, toDateKey, weeksInMonth } from '../src/lib/date.ts';
+import { buildMonthGrid, keepEndAfterStart, toDateKey, weeksInMonth } from '../src/lib/date.ts';
 import { getJapaneseHolidays } from '../src/lib/holidays.ts';
 import { expandOccurrences, truncateRRuleBefore } from '../src/lib/recurrence.ts';
 import { buildRepeat, describeRepeat, parseRepeat } from '../src/lib/repeat.ts';
-import { birthStars, dailyDirections, dayKanshi, dayStar, monthStar, solarMonth, yearStar } from '../src/lib/kyusei.ts';
-import { kaiunDays } from '../src/lib/kaiun.ts';
+import { DIRECTION_NAMES, birthStars, dailyDirections, dayKanshi, dayStar, monthStar, solarMonth, taikaiunDirections, yearStar } from '../src/lib/kyusei.ts';
+import { bestDirectionNames, taikaiunDays } from '../src/lib/kaiun.ts';
 import { getRokuyo, toLunar } from '../src/lib/rokuyo.ts';
 import { weatherCodeToIcon } from '../src/lib/weather.ts';
 
@@ -182,10 +182,32 @@ test('日盤（八雲院の表示と照合した日）', () => {
   assert.equal(dailyDirections(d('2026-06-20'), 1, 1).tendo, 'NW');
 });
 
-test('開運カレンダーの予定', () => {
-  const days = kaiunDays(new Date('2026-10-24T00:00:00'), 1, 1, 1);
-  assert.equal(days.length, 1);
-  assert.equal(days[0].title, '最大吉方 北・南東・南 ／ 天道吉方 南');
-  assert.match(days[0].memo, /日盤 中宮 八白土星（辛未）/);
-  assert.match(days[0].memo, /yakumoin\.info\/daily\/direction\/date\/20261024/);
+test('開運カレンダー：大開運日の予定と毎日の最大吉方', () => {
+  const days = taikaiunDays(new Date('2026-01-01T00:00:00'), 365, 6, 1);
+  assert.deepEqual(days.map((d) => `${d.date.getMonth() + 1}/${d.date.getDate()} ${d.title}`), [
+    '9/7 大開運日 南西・北西',
+    '9/16 大開運日 南西',
+    '9/25 大開運日 北西',
+    '10/4 大開運日 南西・北西',
+  ]);
+  assert.match(days[0].memo, /good_luck_list\/id\/6\/1\/2026/);
+  assert.deepEqual(bestDirectionNames(new Date('2026-10-24T00:00:00'), 1, 1), ['北', '南東', '南']);
+});
+
+test('大開運日（八雲院 本命六白・月命一白 2026年の一覧と照合）', () => {
+  const hits: string[] = [];
+  for (let d = new Date(2026, 0, 1); d.getFullYear() === 2026; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    const r = taikaiunDirections(d, 6, 1);
+    if (r.length) hits.push(`${d.getMonth() + 1}/${d.getDate()} ${r.map((x) => DIRECTION_NAMES[x]).join('、')}`);
+  }
+  assert.deepEqual(hits, ['9/7 南西、北西', '9/16 南西', '9/25 北西', '10/4 南西、北西']);
+});
+
+test('開始を変えたら終了が前にならないよう調整', () => {
+  const prev = { startDate: '2026-10-06', startTime: '10:00', endDate: '2026-10-06', endTime: '11:30' };
+  // 終了より前に動かした → そのまま
+  assert.deepEqual(keepEndAfterStart(prev, { startDate: '2026-10-06', startTime: '09:00' }), { endDate: '2026-10-06', endTime: '11:30' });
+  // 終了を越えた → 長さ（1時間30分）を保つ
+  assert.deepEqual(keepEndAfterStart(prev, { startDate: '2026-10-06', startTime: '23:00' }), { endDate: '2026-10-07', endTime: '00:30' });
+  assert.deepEqual(keepEndAfterStart(prev, { startDate: '2026-10-08', startTime: '10:00' }), { endDate: '2026-10-08', endTime: '11:30' });
 });

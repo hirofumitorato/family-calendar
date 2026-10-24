@@ -31,6 +31,7 @@ import type {
   Person,
 } from '@/lib/types';
 import { notify } from '@/utils/dialog';
+import { eventLook } from '@/utils/event-look';
 
 const REPEATS: { label: string; value: RepeatFreq | null }[] = [
   { label: 'なし', value: null },
@@ -336,7 +337,7 @@ export function EventForm(props: Props) {
           <View
             style={[
               styles.titleBox,
-              { backgroundColor: allDay ? shownColor : `${shownColor}33`, borderLeftColor: shownColor },
+              { backgroundColor: eventLook(shownColor, allDay, t).bg, borderLeftColor: shownColor },
             ]}>
             <TextInput
               value={title}

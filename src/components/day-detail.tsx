@@ -14,6 +14,7 @@ import { weatherCodeToIcon } from '@/lib/weather';
 import type { MonthData } from '@/state/app-store';
 import { useCalendarPrefs } from '@/state/calendar-prefs';
 import { confirm } from '@/utils/dialog';
+import { eventLook } from '@/utils/event-look';
 
 export function DayDetail({
   date,
@@ -124,26 +125,26 @@ export function DayDetail({
       {occs.length === 0 ? (
         <Text style={[styles.empty, { color: t.textMuted }]}>予定はありません</Text>
       ) : (
-        occs.map((o) => (
+        occs.map((o) => {
+          // カレンダー・編集画面のタイトルと同じ色にする
+          const look = eventLook(o.color, o.event.all_day, t);
+          return (
           <Pressable
             key={o.key}
             accessibilityLabel={`${o.event.title} の内容を見る`}
             onPress={() => onPressEvent(o)}
-            style={({ pressed }) => [
-              styles.event,
-              { backgroundColor: pressed ? t.selected : t.backgroundElement },
-            ]}>
-            <View style={[styles.colorBar, { backgroundColor: o.color }]} />
+            style={({ pressed }) => [styles.event, { backgroundColor: look.bg, opacity: pressed ? 0.7 : 1 }]}>
+            <View style={[styles.colorBar, { backgroundColor: look.bar }]} />
             {/* 誰の予定か：先頭に小さく */}
             <View style={styles.badgeCol}>
-              <MemberBadge person={o.member} />
+              <MemberBadge person={o.member} outlined={look.solid} />
             </View>
             <View style={styles.eventBody}>
-              <Text style={[styles.eventTitle, { color: t.text }]} numberOfLines={1}>
+              <Text style={[styles.eventTitle, { color: look.text }]} numberOfLines={1}>
                 {o.event.icon ? `${o.event.icon} ` : ''}
                 {o.event.title}
               </Text>
-              <Text style={[styles.eventTime, { color: t.textSecondary }]} numberOfLines={1}>
+              <Text style={[styles.eventTime, { color: look.sub }]} numberOfLines={1}>
                 {timeLabel(o)}
                 {o.event.location ? `  📍${o.event.location}` : ''}
                 {o.calendar.visibility === 'personal' ? '  🔒' : ''}
@@ -154,17 +155,18 @@ export function DayDetail({
               accessibilityLabel={`${o.event.title} を編集`}
               onPress={() => onEditEvent(o)}
               style={styles.rowButton}>
-              <Text style={{ color: t.accent, fontSize: 13, fontWeight: '600' }}>編集</Text>
+              <Text style={{ color: look.solid ? '#fff' : t.accent, fontSize: 13, fontWeight: '700' }}>編集</Text>
             </Pressable>
             <Pressable
               hitSlop={6}
               accessibilityLabel={`${o.event.title} を削除`}
               onPress={() => onDeleteEvent(o)}
               style={[styles.rowButton, { paddingRight: 12 }]}>
-              <Text style={{ color: t.sunday, fontSize: 13, fontWeight: '600' }}>削除</Text>
+              <Text style={{ color: look.solid ? '#fff' : t.sunday, fontSize: 13, fontWeight: '700' }}>削除</Text>
             </Pressable>
           </Pressable>
-        ))
+          );
+        })
       )}
       <KaiunSheet visible={kaiunOpen} onClose={() => setKaiunOpen(false)} />
     </View>

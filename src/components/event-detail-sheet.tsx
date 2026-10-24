@@ -2,6 +2,7 @@ import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 
 import { MemberBadge } from '@/components/member-badge';
 import { useTheme } from '@/hooks/use-theme';
+import { eventLook } from '@/utils/event-look';
 import { formatDayLabel, formatTime, isSameDay } from '@/lib/date';
 import { describeRepeat } from '@/lib/repeat';
 import type { EventOccurrence } from '@/lib/types';
@@ -48,11 +49,14 @@ export function EventDetailSheet({
         <View style={[styles.sheet, { backgroundColor: t.background }]}>
           <View style={[styles.grabber, { backgroundColor: t.border }]} />
           <ScrollView contentContainerStyle={{ paddingBottom: 8 }}>
-            <View style={styles.titleRow}>
-              <View style={[styles.colorBar, { backgroundColor: o.color }]} />
+            <View
+              style={[
+                styles.titleRow,
+                { backgroundColor: eventLook(o.color, o.event.all_day, t).bg, borderLeftColor: o.color },
+              ]}>
               {/* 誰の予定か：タイトルの先頭に小さく */}
-              <MemberBadge person={o.member} size="medium" />
-              <Text style={[styles.title, { color: t.text }]}>
+              <MemberBadge person={o.member} size="medium" outlined={o.event.all_day} />
+              <Text style={[styles.title, { color: eventLook(o.color, o.event.all_day, t).text }]}>
                 {o.event.icon ? `${o.event.icon} ` : ''}
                 {o.event.title}
               </Text>
@@ -129,7 +133,16 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: { maxHeight: '80%', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, paddingBottom: 28 },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-  titleRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8, marginBottom: 14 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+    borderRadius: 12,
+    borderLeftWidth: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
   colorBar: { width: 5, borderRadius: 3 },
   title: { flex: 1, fontSize: 22, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 7 },

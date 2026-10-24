@@ -4,7 +4,16 @@ import { useTheme } from '@/hooks/use-theme';
 import type { Person } from '@/lib/types';
 
 /** 誰の予定かを示す小さなバッジ。予定の先頭（左端）に置く */
-export function MemberBadge({ person, size = 'small' }: { person: Person | null; size?: 'small' | 'medium' }) {
+export function MemberBadge({
+  person,
+  size = 'small',
+  outlined = false,
+}: {
+  person: Person | null;
+  size?: 'small' | 'medium';
+  /** 濃い色の上に置くとき、白い縁で見分けられるようにする */
+  outlined?: boolean;
+}) {
   const t = useTheme();
   const medium = size === 'medium';
   return (
@@ -14,6 +23,7 @@ export function MemberBadge({ person, size = 'small' }: { person: Person | null;
         styles.badge,
         medium && styles.badgeMedium,
         { backgroundColor: person ? person.color : t.border },
+        outlined && styles.outlined,
       ]}>
       <Text
         numberOfLines={1}
@@ -29,4 +39,5 @@ const styles = StyleSheet.create({
   badgeMedium: { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2, maxWidth: 90 },
   text: { fontSize: 10, fontWeight: '700' },
   textMedium: { fontSize: 12 },
+  outlined: { borderWidth: 1, borderColor: '#fff' },
 });

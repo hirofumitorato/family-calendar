@@ -283,13 +283,21 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
 
     subscribe(onChange) {
       // RLS が効くので、自分が見られる行の変更だけが届く
+      // 天気は1回の取得で14日分まとめて届くので、1秒待ってから1回だけ更新する
+      let weatherTimer: ReturnType<typeof setTimeout> | null = null;
+      const onWeather = () => {
+        if (weatherTimer) clearTimeout(weatherTimer);
+        weatherTimer = setTimeout(onChange, 1000);
+      };
       const channel = sb
         .channel('calendar-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'day_stickers' }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'day_colors' }, onChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'weather_daily' }, onWeather)
         .subscribe();
       return () => {
+        if (weatherTimer) clearTimeout(weatherTimer);
         sb.removeChannel(channel);
       };
     },

@@ -14,13 +14,15 @@ export default function SignInScreen() {
   const run = async (mode: 'signIn' | 'signUp') => {
     if (!supabase) return;
     setBusy(true);
-    const { error } =
+    const { data, error } =
       mode === 'signIn'
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password });
     setBusy(false);
     if (error) notify('エラー', error.message);
-    else if (mode === 'signUp') notify('確認メールを送りました', 'メール内のリンクを開いてからログインしてください');
+    // 確認メールがオフならそのままログインされる（session がある）。オンのときだけ案内する
+    else if (mode === 'signUp' && !data.session)
+      notify('確認メールを送りました', 'メール内のリンクを開いてからログインしてください');
   };
 
   const input = [styles.input, { color: t.text, backgroundColor: t.backgroundElement }];

@@ -42,12 +42,35 @@ function buildUrl(lat: number, lon: number): string {
   return `${base}?${params}`;
 }
 
-Deno.serve(async (req) => {
-  // cron 以外から叩かれないよう、service_role キーでの呼び出しのみ許可
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  if (req.headers.get('Authorization') !== `Bearer ${serviceKey}`) {
-    return new Response('unauthorized', { status: 401 });
+/**
+ * cron 以外から叩かれないよう、service_role での呼び出しだけ許可する。
+ * - 環境変数の鍵と完全一致（旧形式・新形式どちらの鍵でも）
+ * - または、関数の「Verify JWT」がオンの前提で（署名は Supabase の入口で検証済み）、
+ *   JWT の role が service_role
+ * プロジェクトによって環境変数の鍵が新形式（sb_secret_...）になっていて、
+ * ダッシュボードの Legacy service_role キー（eyJ...）と一致しないことがあるため。
+ */
+function isServiceRole(req: Request): boolean {
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) return false;
+  const keys = [Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), Deno.env.get('SUPABASE_SECRET_KEY')].filter(Boolean);
+  if (keys.includes(token)) return true;
+  const part = token.split('.')[1];
+  if (!part) return false;
+  try {
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)));
+    return payload.role === 'service_role';
+  } catch {
+    return false;
   }
+}
+
+Deno.serve(async (req) => {
+  if (!isServiceRole(req)) {
+    return new Response('unauthorized: service_role キーで呼び出してください', { status: 401 });
+  }
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey);
 

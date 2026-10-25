@@ -20,9 +20,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # Supabase の接続先（公開してよい値：anon / publishable key）。空ならデモモードで公開される
-      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      # Supabase の接続先。anon キーはアプリに埋め込む前提の公開用の鍵（データは RLS で守られる）。
+      # リポジトリの Variables に同名の値があればそちらを優先する
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL || 'https://ohyuthnirobnmfnngoet.supabase.co' }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oeXV0aG5pcm9ibm1mbm5nb2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MDU1MzEsImV4cCI6MjEwODQ4MTUzMX0.Ek5PUxWm8n5Zn9anglHllxJeny76rXiJPwtPNcXvNxs' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

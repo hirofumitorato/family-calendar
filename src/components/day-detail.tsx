@@ -12,7 +12,7 @@ import { bestDirectionNames } from '@/lib/kaiun';
 import { birthStars } from '@/lib/kyusei';
 import type { DaySticker, EventOccurrence } from '@/lib/types';
 import { weatherCodeToIcon } from '@/lib/weather';
-import type { MonthData } from '@/state/app-store';
+import { useApp, type MonthData } from '@/state/app-store';
 import { useCalendarPrefs } from '@/state/calendar-prefs';
 import { confirm } from '@/utils/dialog';
 import { EventGradient, gradientColorsOf } from '@/components/event-gradient';
@@ -39,6 +39,7 @@ export function DayDetail({
   const holiday = getHolidayName(key);
   const weather = data.weatherByDay.get(key);
   const [weatherOpen, setWeatherOpen] = useState(false);
+  const locationName = useApp().ctx?.family.location_name ?? null;
   const stickers = data.stickersByDay.get(key) ?? [];
   const occs = data.occurrencesByDay.get(key) ?? [];
   const prefs = useCalendarPrefs();
@@ -76,6 +77,10 @@ export function DayDetail({
             accessibilityRole="button"
             accessibilityLabel="時間ごとの天気を見る"
             style={({ pressed }) => [styles.weather, pressed && { opacity: 0.5 }]}>
+            {/* どこの天気か */}
+            {locationName && (
+              <Text style={[styles.place, { color: t.textSecondary, borderColor: t.border }]}>{locationName}</Text>
+            )}
             <Text style={styles.weatherEmoji}>{weatherCodeToIcon(weather.weather_code).emoji}</Text>
             <Text style={[styles.weatherText, { color: t.textSecondary }]}>
               {weatherCodeToIcon(weather.weather_code).label}
@@ -175,7 +180,7 @@ export function DayDetail({
 
 const styles = StyleSheet.create({
   root: { padding: 16, gap: 10 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
   dayRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   dayLabel: { fontSize: 18, fontWeight: '700' },
   rokuyo: { fontSize: 13, fontWeight: '600' },
@@ -183,6 +188,7 @@ const styles = StyleSheet.create({
   holiday: { fontSize: 12, marginTop: 2 },
   weather: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   weatherEmoji: { fontSize: 20 },
+  place: { fontSize: 11, fontWeight: '600', borderWidth: 1, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, marginRight: 2 },
   weatherText: { fontSize: 12 },
   stickerRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   sticker: { fontSize: 24 },

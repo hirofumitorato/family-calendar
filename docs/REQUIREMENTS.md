@@ -59,3 +59,4 @@ iPhone と Android の両方で、家族みんなで使えるカレンダーア�
 - [x] 「表示するカレンダー」（六曜スイッチ・開運カレンダーの設定）は設定画面へ移動。日付の詳細エリアには出さない
 - [x] 日付の詳細の天気をタップすると、その日の時間ごとの天気・気温・降水確率（横スクロール、今日は今の時刻から）。`weather_hourly`（migration `20261025010000_weather_hourly.sql`）に fetch-weather が Open-Meteo の hourly を保存
 - [x] EAS Update：起動時・アプリに戻ったときに新しいバージョンを確認して再起動を提案。設定に「アップデートを確認」。runtimeVersion は fingerprint、チャンネルは preview / production
+- [x] 天気の横に地域名（設定の「天気予報の地点」）を表示。日付の詳細の天気マークの左、時間ごとの天気の見出しの横

@@ -71,7 +71,14 @@ export function WeatherSheet({
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="閉じる" />
       <View style={[styles.sheet, { backgroundColor: t.background }]}>
         <View style={[styles.grabber, { backgroundColor: t.border }]} />
-        <Text style={[styles.title, { color: t.text }]}>{formatDayLabel(date)} の天気</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: t.text }]}>{formatDayLabel(date)} の天気</Text>
+          {ctx?.family.location_name && (
+            <Text style={[styles.place, { color: t.textSecondary, borderColor: t.border }]}>
+              {ctx.family.location_name}
+            </Text>
+          )}
+        </View>
         {daily && (
           <Text style={[styles.summary, { color: t.textSecondary }]}>
             {weatherCodeToIcon(daily.weather_code).emoji} {weatherCodeToIcon(daily.weather_code).label}
@@ -147,7 +154,9 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, paddingBottom: 28 },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   title: { fontSize: 18, fontWeight: '700' },
+  place: { fontSize: 13, fontWeight: '600', borderWidth: 1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   summary: { fontSize: 13, marginTop: 4, marginBottom: 12 },
   empty: { paddingVertical: 32, textAlign: 'center' },
   tableRow: { flexDirection: 'row' },

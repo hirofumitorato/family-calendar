@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Stamp } from '@/components/stamp';
+import { stampAsText } from '@/lib/stamp-catalog';
 import { useTheme } from '@/hooks/use-theme';
 import { describeRepeat } from '@/lib/repeat';
 import type { EventTemplate, Person } from '@/lib/types';
@@ -68,7 +70,7 @@ export function TemplatePicker({
         label="テンプレート"
         value={
           applied
-            ? `${applied.category?.trim() || UNCATEGORIZED} › ${applied.icon ?? ''}${applied.title}`
+            ? `${applied.category?.trim() || UNCATEGORIZED} › ${stampAsText(applied.icon)}${applied.title}`
             : 'ジャンルから選ぶ'
         }
         placeholder={!applied}
@@ -123,10 +125,12 @@ export function TemplatePicker({
                   setApplied(tpl);
                   setOpen(null);
                 }}>
-                <Text style={[styles.optionTitle, { color: t.text }]} numberOfLines={1}>
-                  {tpl.icon ? `${tpl.icon} ` : ''}
-                  {tpl.title}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  {tpl.icon && <Stamp value={tpl.icon} size={22} />}
+                  <Text style={[styles.optionTitle, { color: t.text }]} numberOfLines={1}>
+                    {tpl.title}
+                  </Text>
+                </View>
                 <Text style={{ color: t.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
                   {subtitle(tpl)}
                 </Text>

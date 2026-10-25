@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Stamp } from '@/components/stamp';
+import { stampAsText } from '@/lib/stamp-catalog';
 import { MemberBadges } from '@/components/member-badge';
 import { WeatherSheet } from '@/components/weather-sheet';
 import { MemberStripe } from '@/components/member-stripe';
@@ -98,13 +100,13 @@ export function DayDetail({
           {stickers.map((s) => (
             <Pressable
               key={s.id}
-              accessibilityLabel={`スタンプ ${s.sticker} を外す`}
+              accessibilityLabel={`スタンプ ${stampAsText(s.sticker)} を外す`}
               onPress={async () => {
-                if (await confirm(`スタンプ ${s.sticker} を外しますか？`, { okText: '外す', destructive: true })) {
+                if (await confirm(`スタンプ ${stampAsText(s.sticker)} を外しますか？`, { okText: '外す', destructive: true })) {
                   onRemoveSticker(s);
                 }
               }}>
-              <Text style={styles.sticker}>{s.sticker}</Text>
+              <Stamp value={s.sticker} size={30} />
             </Pressable>
           ))}
         </View>
@@ -145,10 +147,12 @@ export function DayDetail({
               <MemberBadges people={o.members} outlined={look.solid} />
             </View>
             <View style={styles.eventBody}>
-              <Text style={[styles.eventTitle, { color: look.text }]} numberOfLines={1}>
-                {o.event.icon ? `${o.event.icon} ` : ''}
-                {o.event.title}
-              </Text>
+              <View style={styles.titleLine}>
+                {o.event.icon && <Stamp value={o.event.icon} size={24} />}
+                <Text style={[styles.eventTitle, { color: look.text, flexShrink: 1 }]} numberOfLines={1}>
+                  {o.event.title}
+                </Text>
+              </View>
               <Text style={[styles.eventTime, { color: look.sub }]} numberOfLines={1}>
                 {timeLabel(o)}
                 {o.event.location ? `  📍${o.event.location}` : ''}
@@ -188,6 +192,7 @@ const styles = StyleSheet.create({
   holiday: { fontSize: 12, marginTop: 2 },
   weather: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   weatherEmoji: { fontSize: 20 },
+  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   place: { fontSize: 11, fontWeight: '600', borderWidth: 1, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, marginRight: 2 },
   weatherText: { fontSize: 12 },
   stickerRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },

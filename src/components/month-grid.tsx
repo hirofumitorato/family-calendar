@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Stamp } from '@/components/stamp';
 import { dayColorFill } from '@/constants/stickers';
 import type { ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -168,9 +169,11 @@ const DayCell = memo(function DayCell({
           </Text>
         )}
         {stickers.length > 0 && (
-          <Text style={styles.stickers} numberOfLines={1}>
-            {stickers.slice(0, 2).map((s) => s.sticker).join('')}
-          </Text>
+          <View style={styles.stickers}>
+            {stickers.slice(0, 2).map((s) => (
+              <Stamp key={s.id} value={s.sticker} size={12} />
+            ))}
+          </View>
         )}
         <View style={{ flex: 1 }} />
         {weather && inMonth && (
@@ -189,10 +192,10 @@ const DayCell = memo(function DayCell({
             { backgroundColor: o.event.all_day ? o.color : `${o.color}33` },
             !inMonth && { opacity: 0.45 },
           ]}>
+          {o.event.icon && <Stamp value={o.event.icon} size={12} style={styles.chipStamp} />}
           <Text
             numberOfLines={1}
             style={[styles.chipText, { color: o.event.all_day ? '#fff' : t.text }]}>
-            {o.event.icon ?? ''}
             {o.event.title}
           </Text>
         </View>
@@ -231,9 +234,10 @@ const styles = StyleSheet.create({
   dateToday: { fontWeight: '800' },
   rokuyo: { fontSize: 8, fontWeight: '600', flexShrink: 1 },
   weather: { fontSize: 10 },
-  stickers: { fontSize: 10, lineHeight: 13 },
-  chip: { marginTop: 1.5, paddingHorizontal: 2, borderRadius: 3 },
-  chipText: { fontSize: 10, lineHeight: 14, fontWeight: '600' },
+  stickers: { flexDirection: 'row', gap: 1 },
+  chip: { marginTop: 1.5, paddingHorizontal: 2, borderRadius: 3, flexDirection: 'row', alignItems: 'center' },
+  chipStamp: { marginRight: 1 },
+  chipText: { fontSize: 10, lineHeight: 14, fontWeight: '600', flex: 1 },
   more: { fontSize: 9, lineHeight: 11, paddingHorizontal: 2 },
   bestDirs: {
     position: 'absolute',

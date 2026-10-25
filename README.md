@@ -121,3 +121,8 @@ npx expo start      # 開発サーバー
 
 - iOS: `npx eas-cli build -p ios` → TestFlight（Apple Developer 登録が必要）
 - Android: `npx eas-cli build -p android` → APK を直接配布 or Google Play 内部テスト
+
+## クレジット
+
+- スタンプの絵：[Fluent Emoji](https://github.com/microsoft/fluentui-emoji)（© Microsoft Corporation, MIT License — `assets/stamps/LICENSE-fluentui-emoji.txt`）。
+  画像は `scripts/stamps/build.mjs` で PNG にしている。文字のスタンプはこのアプリのオリジナル。

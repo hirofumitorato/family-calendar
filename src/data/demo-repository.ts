@@ -63,7 +63,7 @@ function seedEvents(): CalendarEvent[] {
       rrule: 'FREQ=YEARLY',
     }),
     ev('e2', FAMILY_CAL, '燃えるゴミ', at(today, 0, 8), at(today, 0, 8, 30), {
-      icon: '🗑️',
+      icon: 'tx:#2E7D32:燃えるゴミ',
       rrule: 'FREQ=WEEKLY;BYDAY=MO,TH',
     }),
     ev('e3', FAMILY_CAL, '家族で温泉', at(today, 9, 10), at(today, 10, 17), {
@@ -75,7 +75,7 @@ function seedEvents(): CalendarEvent[] {
       icon: '🦷',
       remind_minutes_before: [60],
     }),
-    ev('e5', MY_CAL, '打ち合わせ', at(today, 2, 13), at(today, 2, 14), { icon: '💼', member_ids: [ME] }),
+    ev('e5', MY_CAL, '打ち合わせ', at(today, 2, 13), at(today, 2, 14), { icon: 'tx:#1E88E5:会議', member_ids: [ME] }),
     ev('e7', FAMILY_CAL, 'ピアノ', at(today, 1, 17), at(today, 1, 18), {
       icon: '🎹',
       member_ids: [KID],

@@ -1,5 +1,6 @@
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Stamp } from '@/components/stamp';
 import { MemberBadges } from '@/components/member-badge';
 import { MemberStripe } from '@/components/member-stripe';
 import { useTheme } from '@/hooks/use-theme';
@@ -70,8 +71,8 @@ export function EventDetailSheet({
               />
               {/* 誰の予定か：タイトルの先頭に小さく */}
               <MemberBadges people={o.members} size="medium" outlined={o.event.all_day} max={4} />
+              {o.event.icon && <Stamp value={o.event.icon} size={30} />}
               <Text style={[styles.title, { color: eventLook(o.color, o.event.all_day, t).text }]}>
-                {o.event.icon ? `${o.event.icon} ` : ''}
                 {o.event.title}
               </Text>
             </View>

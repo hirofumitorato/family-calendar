@@ -16,9 +16,9 @@ import { EventGradient, gradientColorsOf } from '@/components/event-gradient';
 import { DateTimeRow, type PickerOpen } from '@/components/date-time-picker';
 import { GenreSheet } from '@/components/genre-sheet';
 import { PeopleSheet } from '@/components/people-sheet';
-import { StickerPicker } from '@/components/sticker-picker';
+import { Stamp } from '@/components/stamp';
+import { StampPicker } from '@/components/stamp-picker';
 import { TemplatePicker } from '@/components/template-picker';
-import { EVENT_ICON_GROUPS } from '@/constants/stickers';
 import { useGenres } from '@/hooks/use-genres';
 import { useKeyboardFocusScroll } from '@/hooks/use-keyboard-focus-scroll';
 import { useTheme } from '@/hooks/use-theme';
@@ -340,9 +340,9 @@ export function EventForm(props: Props) {
         <View style={styles.titleRow} {...kb.field('title')}>
           <Pressable
             onPress={() => setIconPicker(true)}
-            accessibilityLabel="アイコンを選ぶ"
+            accessibilityLabel="スタンプを選ぶ"
             style={[styles.iconButton, { backgroundColor: t.backgroundElement }]}>
-            <Text style={{ fontSize: 24 }}>{icon ?? '🙂'}</Text>
+            {icon ? <Stamp value={icon} size={34} /> : <Stamp value="😊" size={28} style={{ opacity: 0.45 }} />}
           </Pressable>
           {/* タイトル欄はカレンダーでの見え方と同じ色（終日＝濃い色、時間指定＝淡い色）。
               複数人なら選んだ人の色のグラデーション */}
@@ -524,11 +524,9 @@ export function EventForm(props: Props) {
         )}
       </ScrollView>
 
-      <StickerPicker
+      <StampPicker
         visible={iconPicker}
-        title="アイコンを選ぶ"
-        groups={EVENT_ICON_GROUPS}
-        allowClear
+        value={icon}
         onSelect={(v) => {
           setIcon(v);
           setIconPicker(false);

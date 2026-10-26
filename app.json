@@ -46,6 +46,20 @@
     },
     "runtimeVersion": {
       "policy": "fingerprint"
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "fafca1d9-1bf8-4f31-9be9-87fe25145e1f"
+      }
+    },
+    "owner": "hiro19",
+    "updates": {
+      "url": "https://u.expo.dev/fafca1d9-1bf8-4f31-9be9-87fe25145e1f"
     }
   }
 }

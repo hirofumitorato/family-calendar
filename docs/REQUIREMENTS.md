@@ -61,3 +61,4 @@ iPhone と Android の両方で、家族みんなで使えるカレンダーア�
 - [x] EAS Update：起動時・アプリに戻ったときに新しいバージョンを確認して再起動を提案。設定に「アップデートを確認」。runtimeVersion は fingerprint、チャンネルは preview / production
 - [x] 天気の横に地域名（設定の「天気予報の地点」）を表示。日付の詳細の天気マークの左、時間ごとの天気の見出しの横
 - [x] スタンプを大幅に追加（14カテゴリ・約470種）。絵のスタンプは Fluent Emoji（MIT）の画像、文字のスタンプ（早番・有休・燃えるゴミ・参観日など）はオリジナル。カテゴリのタブ・検索（ひらがな可）・最近使ったもの。カタログは `src/lib/stamp-catalog.ts`
+- [x] アプリのアイコン（カレンダーと家族3人、オレンジ）。iPhone・Android（アダプティブ・モノクロ）・起動画面・Web（favicon・ホーム画面に追加用 apple-touch-icon、`src/app/+html.tsx`）。元の SVG と生成スクリプトは `scripts/icon/`

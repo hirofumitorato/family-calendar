@@ -1,0 +1,26 @@
+<!-- かぞくカレンダーのマーク（カレンダーと家族3人）。1024×1024、中央 640px ほどに収まる -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#8A3A00" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <!-- 紙 -->
+    <rect x="212" y="236" width="600" height="560" rx="96" fill="#FFFFFF"/>
+    <!-- 上の帯 -->
+    <path d="M212 332 a96 96 0 0 1 96 -96 h408 a96 96 0 0 1 96 96 v52 h-600z" fill="#E8641B"/>
+  </g>
+  <!-- リング -->
+  <rect x="352" y="186" width="48" height="112" rx="24" fill="#FFF3E8" stroke="#C24E0E" stroke-width="10"/>
+  <rect x="624" y="186" width="48" height="112" rx="24" fill="#FFF3E8" stroke="#C24E0E" stroke-width="10"/>
+  <!-- 家族3人（パパ・ママ・こども） -->
+  <g>
+    <circle cx="398" cy="532" r="62" fill="#3B82F6"/>
+    <path d="M300 724 a98 98 0 0 1 196 0 v12 h-196z" fill="#3B82F6"/>
+    <circle cx="626" cy="532" r="62" fill="#EC4899"/>
+    <path d="M528 724 a98 98 0 0 1 196 0 v12 h-196z" fill="#EC4899"/>
+    <circle cx="512" cy="604" r="46" fill="#10B981" stroke="#FFFFFF" stroke-width="12"/>
+    <path d="M436 740 a76 76 0 0 1 152 0 v8 h-152z" fill="#10B981" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round"/>
+  </g>
+</svg>

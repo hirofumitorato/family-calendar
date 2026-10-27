@@ -1,0 +1,46 @@
+# Android（と iPhone）のアプリに、修正を自動で届ける（EAS Update）。main に push するたびに実行。
+# 準備：リポジトリの Settings → Secrets and variables → Actions に EXPO_TOKEN（expo.dev で作るアクセストークン）を登録する。
+# EXPO_TOKEN がなければ何もしない。
+# 新しいネイティブの部品を入れたときは、この配信では届かない（runtimeVersion が変わる）ので、eas build で作り直す。
+name: アプリに修正を配信
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: eas-update
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: EXPO_TOKEN の確認
+        if: env.EXPO_TOKEN == ''
+        run: echo "EXPO_TOKEN が登録されていないので、アプリへの配信はスキップします"
+      - uses: actions/checkout@v4
+        if: env.EXPO_TOKEN != ''
+      - uses: actions/setup-node@v4
+        if: env.EXPO_TOKEN != ''
+        with:
+          node-version: 22
+          cache: npm
+      - if: env.EXPO_TOKEN != ''
+        run: npm ci
+      - if: env.EXPO_TOKEN != ''
+        run: npm test
+      - uses: expo/expo-github-action@v8
+        if: env.EXPO_TOKEN != ''
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: 配信
+        if: env.EXPO_TOKEN != ''
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || '手動で配信' }}
+        # コミットメッセージの1行目を、配信の説明にする
+        run: eas update --channel preview --environment preview --platform android --message "${COMMIT_MESSAGE%%$'\n'*}" --non-interactive

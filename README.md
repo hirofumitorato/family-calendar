@@ -75,6 +75,9 @@ npx eas-cli@latest build -p ios --profile preview         # iPhone（Apple Devel
 ビルドが終わると表示される URL / QR コードをスマホで開くとインストールできます。
 ### 修正を配信する（EAS Update）
 
+main に push すると `.github/workflows/android-update.yml` が自動で `eas update` する（GitHub の Secrets に `EXPO_TOKEN` が必要）。
+手動で配信する場合は下のコマンド。
+
 最初の1回だけ `npx eas-cli@latest update:configure`（app.json に updates.url が入る）を実行してからビルドする。
 その後の修正は、ビルドし直さずに配信できる：
 

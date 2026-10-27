@@ -13,7 +13,7 @@ import {
 import { ColorPopover } from '@/components/color-popover';
 import { MemberStripe } from '@/components/member-stripe';
 import { EventGradient, gradientColorsOf } from '@/components/event-gradient';
-import { DateTimeRow, type PickerOpen } from '@/components/date-time-picker';
+import { StartEndPanel } from '@/components/start-end-panel';
 import { GenreSheet } from '@/components/genre-sheet';
 import { PeopleSheet } from '@/components/people-sheet';
 import { Stamp } from '@/components/stamp';
@@ -121,8 +121,6 @@ export function EventForm(props: Props) {
     tpl0?.category ?? (props.mode === 'template' ? props.defaultGenre ?? null : null),
   );
   const [color, setColor] = useState<string | null>(initial?.color ?? tpl0?.color ?? null);
-  // 開いている日付・時刻のピッカー（同時に開くのは1つだけ）
-  const [openPicker, setOpenPicker] = useState<{ row: 'start' | 'end'; kind: PickerOpen } | null>(null);
   const [genreSheet, setGenreSheet] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
@@ -413,34 +411,20 @@ export function EventForm(props: Props) {
           onChange={setCalendarId}
         />
 
-        <View style={styles.switchRow}>
-          <Text style={[styles.label, { color: t.text, marginTop: 0 }]}>終日</Text>
-          <Switch value={allDay} onValueChange={setAllDay} />
-        </View>
-
-        {/* 日付はカレンダーから、時刻はダイヤルで選ぶ（テンプレートは時刻だけ） */}
-        {(!isTemplate || !allDay) && (
-          <>
-            <DateTimeRow
-              label="開始"
-              date={isTemplate ? null : startDate}
-              time={allDay ? null : startTime}
-              open={openPicker?.row === 'start' ? openPicker.kind : null}
-              onOpen={(kind) => setOpenPicker(kind ? { row: 'start', kind } : null)}
-              onChangeDate={(d) => changeStart({ startDate: d })}
-              onChangeTime={(tm) => changeStart({ startTime: tm })}
-            />
-            <DateTimeRow
-              label="終了"
-              date={isTemplate ? null : endDate}
-              time={allDay ? null : endTime}
-              open={openPicker?.row === 'end' ? openPicker.kind : null}
-              onOpen={(kind) => setOpenPicker(kind ? { row: 'end', kind } : null)}
-              onChangeDate={setEndDate}
-              onChangeTime={setEndTime}
-            />
-          </>
-        )}
+        {/* 開始 ▶ 終了 ｜ 終日。日付はカレンダー、時刻は時計の文字盤で選ぶ（テンプレートは時刻だけ） */}
+        <StartEndPanel
+          startDate={isTemplate ? null : startDate}
+          startTime={startTime}
+          endDate={isTemplate ? null : endDate}
+          endTime={endTime}
+          allDay={allDay}
+          onChangeAllDay={setAllDay}
+          onChangeStart={({ date, time }) => changeStart({ startDate: date, startTime: time })}
+          onChangeEnd={({ date, time }) => {
+            if (date) setEndDate(date);
+            if (time) setEndTime(time);
+          }}
+        />
 
         <Text style={label}>繰り返し</Text>
         <Chips options={REPEATS} value={freq} onChange={selectFreq} />

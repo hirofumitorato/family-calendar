@@ -100,9 +100,9 @@ export function EventForm(props: Props) {
 
   const [title, setTitle] = useState(initial?.title ?? tpl0?.title ?? '');
   const [icon, setIcon] = useState<string | null>(initial?.icon ?? tpl0?.icon ?? null);
-  // 誰の予定か（複数選べる）。新しい予定は、並び順が先頭の項目（ふつうは「みんな」）を選んだ状態から始める
+  // 誰の予定か（複数選べる）。新しい予定は、だれも選んでいない状態から始める
   const [memberIds, setMemberIds] = useState<string[]>(
-    initial ? initial.member_ids ?? [] : tpl0 ? tpl0.member_ids ?? [] : people[0] ? [people[0].id] : [],
+    initial ? initial.member_ids ?? [] : tpl0 ? tpl0.member_ids ?? [] : [],
   );
   const [calendarId, setCalendarId] = useState(
     initial?.calendar_id ?? tpl0?.calendar_id ?? defaultCalendarId ?? calendars[0]?.id,
@@ -369,10 +369,20 @@ export function EventForm(props: Props) {
               hitSlop={8}
               accessibilityLabel={`予定の色を選ぶ（${color ? color : '自動'}）`}
               style={[styles.colorButton, { backgroundColor: shownColor, borderColor: allDay ? '#fff' : t.background }]}>
-              {color === null && <Text style={styles.colorButtonAuto}>A</Text>}
             </Pressable>
           </View>
         </View>
+        {/* 予定の色：タイトル欄の丸と同じ。わかりやすいよう文字でも出す */}
+        <Pressable
+          onPress={() => setColorOpen(true)}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="予定の色を変える"
+          style={styles.colorLink}>
+          <View style={[styles.colorLinkDot, { backgroundColor: shownColor }]} />
+          <Text style={{ color: t.accent, fontSize: 12, fontWeight: '600' }}>予定の色を変える</Text>
+          {color === null && <Text style={{ color: t.textMuted, fontSize: 11 }}>（今は自動）</Text>}
+        </Pressable>
 
         <View style={styles.labelRow}>
           <Text style={[styles.label, { color: t.textSecondary, marginTop: 0, marginBottom: 0 }]}>
@@ -596,7 +606,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
-  colorButtonAuto: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  colorLink: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 5, marginTop: 6 },
+  colorLinkDot: { width: 10, height: 10, borderRadius: 5 },
   iconButton: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 12, marginTop: 16, marginBottom: 6 },
   // 見出しと「＋ 追加・編集」を同じ高さに揃え、下の選択肢との間をあける

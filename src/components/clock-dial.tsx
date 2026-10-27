@@ -16,19 +16,22 @@ export function ClockDial({
   mode,
   value,
   onChange,
+  onTouching,
   size = 260,
 }: {
   mode: 'hour' | 'minute';
   value: number;
   onChange: (v: number, done: boolean) => void;
+  /** 指が文字盤に触れている間 true（画面のスクロールを止めるため） */
+  onTouching?: (touching: boolean) => void;
   size?: number;
 }) {
   const t = useTheme();
   const moved = useRef(0);
   const start = useRef({ x: 0, y: 0 });
   // PanResponder は最初に作ったものを使い続けるので、最新の値は ref で渡す
-  const latest = useRef({ mode, onChange, size });
-  latest.current = { mode, onChange, size };
+  const latest = useRef({ mode, onChange, onTouching, size });
+  latest.current = { mode, onChange, onTouching, size };
 
   const pick = (x: number, y: number, snap: 1 | 5) => {
     const { mode: m, size: s } = latest.current;
@@ -38,8 +41,11 @@ export function ClockDial({
   const responder = useMemo(
     () =>
       PanResponder.create({
+        // 画面のスクロールより先に指を受け取る
         onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
         onMoveShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
         // 親のスクロールに指を取られないようにする
         onPanResponderTerminationRequest: () => false,
         onShouldBlockNativeResponder: () => true,
@@ -47,6 +53,7 @@ export function ClockDial({
           const { locationX: x, locationY: y } = e.nativeEvent;
           start.current = { x, y };
           moved.current = 0;
+          latest.current.onTouching?.(true);
           latest.current.onChange(pick(x, y, 1), false);
         },
         onPanResponderMove: (e) => {
@@ -58,8 +65,10 @@ export function ClockDial({
           const { locationX: x, locationY: y } = e.nativeEvent;
           // 分はタップなら5分単位、なぞったら1分単位
           const snap = latest.current.mode === 'minute' && moved.current < 8 ? 5 : 1;
+          latest.current.onTouching?.(false);
           latest.current.onChange(pick(x, y, snap), true);
         },
+        onPanResponderTerminate: () => latest.current.onTouching?.(false),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -126,7 +135,8 @@ export function ClockDial({
       <View
         {...responder.panHandlers}
         accessibilityLabel={mode === 'hour' ? '時を選ぶ文字盤' : '分を選ぶ文字盤'}
-        style={StyleSheet.absoluteFill}
+        // Web（スマホのブラウザ）：文字盤の上で指を動かしてもページをスクロールしない
+        style={[StyleSheet.absoluteFill, styles.noScroll]}
       />
     </View>
   );
@@ -137,5 +147,6 @@ const styles = StyleSheet.create({
   num: { position: 'absolute', width: 40, textAlign: 'center', lineHeight: 24, fontVariant: ['tabular-nums'] },
   center: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
   knob: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  noScroll: { touchAction: 'none' } as object,
   knobDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
 });

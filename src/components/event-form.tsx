@@ -127,6 +127,8 @@ export function EventForm(props: Props) {
   const [iconPicker, setIconPicker] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 時計の文字盤を指でなぞっている間は、画面がスクロールしないように止める
+  const [dialTouching, setDialTouching] = useState(false);
   // 入力欄がキーボードに隠れないよう、フォーカスした欄を画面の上のほうへスクロールする
   const kb = useKeyboardFocusScroll();
 
@@ -292,6 +294,7 @@ export function EventForm(props: Props) {
       />
       <ScrollView
         ref={kb.scrollRef}
+        scrollEnabled={!dialTouching}
         style={{ backgroundColor: t.background }}
         // キーボードが出ている間は、その高さ分の余白を足して一番下の欄も上まで動かせるようにする
         contentContainerStyle={[styles.root, { paddingBottom: 48 + kb.keyboardHeight }]}
@@ -424,6 +427,7 @@ export function EventForm(props: Props) {
             if (date) setEndDate(date);
             if (time) setEndTime(time);
           }}
+          onDialTouching={setDialTouching}
         />
 
         <Text style={label}>繰り返し</Text>

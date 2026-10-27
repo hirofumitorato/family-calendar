@@ -24,6 +24,7 @@ export function StartEndPanel({
   onChangeAllDay,
   onChangeStart,
   onChangeEnd,
+  onDialTouching,
 }: {
   startDate: string | null;
   startTime: string;
@@ -33,6 +34,8 @@ export function StartEndPanel({
   onChangeAllDay: (v: boolean) => void;
   onChangeStart: (next: { date?: string; time?: string }) => void;
   onChangeEnd: (next: { date?: string; time?: string }) => void;
+  /** 時計の文字盤に指が触れている間 true（入力画面のスクロールを止める） */
+  onDialTouching?: (touching: boolean) => void;
 }) {
   const t = useTheme();
   const [active, setActive] = useState<{ side: Side; part: Part } | null>(null);
@@ -133,6 +136,7 @@ export function StartEndPanel({
             <ClockDial
               mode="hour"
               value={Number(cur.time.split(':')[0])}
+              onTouching={onDialTouching}
               onChange={(h, done) => {
                 change(a.side, { time: withHour(cur.time, h) });
                 // 時を決めたら、分の文字盤へ
@@ -144,6 +148,7 @@ export function StartEndPanel({
             <ClockDial
               mode="minute"
               value={Number(cur.time.split(':')[1])}
+              onTouching={onDialTouching}
               onChange={(m) => change(a.side, { time: withMinute(cur.time, m) })}
             />
           )}

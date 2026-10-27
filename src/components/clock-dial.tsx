@@ -27,15 +27,14 @@ export function ClockDial({
   size?: number;
 }) {
   const t = useTheme();
-  const moved = useRef(0);
-  const start = useRef({ x: 0, y: 0 });
   // PanResponder は最初に作ったものを使い続けるので、最新の値は ref で渡す
   const latest = useRef({ mode, onChange, onTouching, size });
   latest.current = { mode, onChange, onTouching, size };
 
-  const pick = (x: number, y: number, snap: 1 | 5) => {
+  // 分は5分単位だけ（なぞっても 00, 05, 10 … に吸い付く）
+  const pick = (x: number, y: number) => {
     const { mode: m, size: s } = latest.current;
-    return m === 'hour' ? pointToHour(x, y, s) : pointToMinute(x, y, s, snap);
+    return m === 'hour' ? pointToHour(x, y, s) : pointToMinute(x, y, s, 5);
   };
 
   const responder = useMemo(
@@ -51,22 +50,17 @@ export function ClockDial({
         onShouldBlockNativeResponder: () => true,
         onPanResponderGrant: (e) => {
           const { locationX: x, locationY: y } = e.nativeEvent;
-          start.current = { x, y };
-          moved.current = 0;
           latest.current.onTouching?.(true);
-          latest.current.onChange(pick(x, y, 1), false);
+          latest.current.onChange(pick(x, y), false);
         },
         onPanResponderMove: (e) => {
           const { locationX: x, locationY: y } = e.nativeEvent;
-          moved.current = Math.max(moved.current, Math.hypot(x - start.current.x, y - start.current.y));
-          latest.current.onChange(pick(x, y, 1), false);
+          latest.current.onChange(pick(x, y), false);
         },
         onPanResponderRelease: (e) => {
           const { locationX: x, locationY: y } = e.nativeEvent;
-          // 分はタップなら5分単位、なぞったら1分単位
-          const snap = latest.current.mode === 'minute' && moved.current < 8 ? 5 : 1;
           latest.current.onTouching?.(false);
-          latest.current.onChange(pick(x, y, snap), true);
+          latest.current.onChange(pick(x, y), true);
         },
         onPanResponderTerminate: () => latest.current.onTouching?.(false),
       }),

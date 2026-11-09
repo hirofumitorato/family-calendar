@@ -214,6 +214,7 @@ export const STAMP_IMAGES: Record<string, number> = {
   "🤔": require('../../assets/stamps/1f914.png'),
   "🤧": require('../../assets/stamps/1f927.png'),
   "🤩": require('../../assets/stamps/1f929.png'),
+  "🥊": require('../../assets/stamps/1f94a.png'),
   "🥗": require('../../assets/stamps/1f957.png'),
   "🥞": require('../../assets/stamps/1f95e.png'),
   "🥩": require('../../assets/stamps/1f969.png'),

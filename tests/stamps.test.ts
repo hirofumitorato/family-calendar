@@ -66,3 +66,8 @@ test('絵と文字のスタンプ', async () => {
   assert.ok(searchStamps('新年会').some((s) => s.value.startsWith('ix:')));
   assert.ok(searchStamps('ギグル').length === 1);
 });
+
+test('背景色つきの文字スタンプ（黒地に赤文字）', () => {
+  assert.deepEqual(parseStamp('tx:#E53935/#111111:別班'), { kind: 'text', color: '#E53935', bg: '#111111', label: '別班' });
+  assert.ok(searchStamps('別班').length === 1);
+});

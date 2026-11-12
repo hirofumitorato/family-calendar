@@ -90,9 +90,9 @@ export function Stamp({ value, size = 24, style }: { value: string; size?: numbe
           height: size,
           borderRadius: size * 0.22,
           borderWidth: tiny ? 0 : Math.max(1, size * 0.04),
-          borderColor: s.color,
-          // シールのように白地（ダークモードでも読める）。小さいときは色で塗る
-          backgroundColor: tiny ? s.color : '#FFFFFF',
+          borderColor: s.bg ?? s.color,
+          // シールのように白地（ダークモードでも読める）。小さいときは色で塗る。背景色の指定があればその色
+          backgroundColor: s.bg ?? (tiny ? s.color : '#FFFFFF'),
         },
         style,
       ]}>
@@ -102,7 +102,7 @@ export function Stamp({ value, size = 24, style }: { value: string; size?: numbe
           numberOfLines={1}
           allowFontScaling={false}
           style={{
-            color: tiny ? '#fff' : s.color,
+            color: tiny && !s.bg ? '#fff' : s.color,
             fontSize,
             lineHeight: fontSize * 1.12,
             fontWeight: '800',

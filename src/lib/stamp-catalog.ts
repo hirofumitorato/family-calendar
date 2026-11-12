@@ -4,6 +4,7 @@
 // - 絵のスタンプ：絵文字そのもの（例 '🐶'）。Fluent Emoji（MIT）の画像で表示し、画像がなければ絵文字の文字で表示する。
 //   以前の絵文字アイコンもそのまま表示できる。
 // - 文字のスタンプ：'tx:<色>:<文字>'（例 'tx:#1E88E5:早番'）。色付きの枠に文字を描く（オリジナルデザイン）。
+//   背景も塗るときは '<文字の色>/<背景の色>'（例 'tx:#E53935/#111111:別班' ＝黒地に赤文字）。
 // - 絵と文字のスタンプ：'ix:<絵文字>:<色>:<文字>'（例 'ix:🍻:#E53935:忘年会'）。上に絵、下に文字。
 
 export type StampItem = {
@@ -21,7 +22,7 @@ export type StampCategory = {
 
 export type ParsedStamp =
   | { kind: 'emoji'; glyph: string }
-  | { kind: 'text'; color: string; label: string }
+  | { kind: 'text'; color: string; label: string; bg?: string }
   | { kind: 'combo'; glyph: string; color: string; label: string };
 
 const TX = 'tx:';
@@ -43,7 +44,12 @@ export function parseStamp(value: string): ParsedStamp {
   if (value.startsWith(TX)) {
     const rest = value.slice(TX.length);
     const i = rest.indexOf(':');
-    if (i > 0) return { kind: 'text', color: rest.slice(0, i), label: rest.slice(i + 1) };
+    if (i > 0) {
+      const [color, bg] = rest.slice(0, i).split('/');
+      return bg
+        ? { kind: 'text', color, bg, label: rest.slice(i + 1) }
+        : { kind: 'text', color, label: rest.slice(i + 1) };
+    }
     return { kind: 'text', color: '#757575', label: rest };
   }
   return { kind: 'emoji', glyph: value };
@@ -136,6 +142,7 @@ export const STAMP_CATEGORIES: StampCategory[] = [
     name: 'しごと',
     items: [
       ...t(C.blue, '出勤 仕事 バイト ギグル 会議 出張 研修 面接 打合せ 外出 来客'),
+      { value: textStamp('#E53935/#111111', '別班'), label: '別班' },
       ...t(C.navy, '早番 中番 遅番 日勤 夜勤 夜勤明け 当直 当番 残業'),
       ...t(C.green, '休み 有休 半休 午前休 午後休 代休 振休 在宅 リモート 定時'),
       ...t(C.red, '締切 提出 重要 給料日 ボーナス'),

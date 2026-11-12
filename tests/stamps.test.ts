@@ -55,3 +55,14 @@ test('検索：ひらがなでもカタカナの名前が見つかる', () => {
   assert.ok(searchStamps('病院').length >= 2);
   assert.equal(searchStamps('').length, 0);
 });
+
+test('絵と文字のスタンプ', async () => {
+  const { comboStamp } = await import('../src/lib/stamp-catalog.ts');
+  const v = comboStamp('🍻', '#3949AB', '忘年会');
+  assert.equal(v, 'ix:🍻:#3949AB:忘年会');
+  assert.deepEqual(parseStamp(v), { kind: 'combo', glyph: '🍻', color: '#3949AB', label: '忘年会' });
+  assert.equal(stampAsText(v), '🍻忘年会');
+  assert.ok(emojiGlyphs().includes('🎍'));
+  assert.ok(searchStamps('新年会').some((s) => s.value.startsWith('ix:')));
+  assert.ok(searchStamps('ギグル').length === 1);
+});

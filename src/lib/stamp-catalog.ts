@@ -4,6 +4,7 @@
 // - 絵のスタンプ：絵文字そのもの（例 '🐶'）。Fluent Emoji（MIT）の画像で表示し、画像がなければ絵文字の文字で表示する。
 //   以前の絵文字アイコンもそのまま表示できる。
 // - 文字のスタンプ：'tx:<色>:<文字>'（例 'tx:#1E88E5:早番'）。色付きの枠に文字を描く（オリジナルデザイン）。
+// - 絵と文字のスタンプ：'ix:<絵文字>:<色>:<文字>'（例 'ix:🍻:#E53935:忘年会'）。上に絵、下に文字。
 
 export type StampItem = {
   /** 保存する値 */
@@ -20,15 +21,25 @@ export type StampCategory = {
 
 export type ParsedStamp =
   | { kind: 'emoji'; glyph: string }
-  | { kind: 'text'; color: string; label: string };
+  | { kind: 'text'; color: string; label: string }
+  | { kind: 'combo'; glyph: string; color: string; label: string };
 
 const TX = 'tx:';
+const IX = 'ix:';
+
+export function comboStamp(glyph: string, color: string, label: string): string {
+  return `${IX}${glyph}:${color}:${label}`;
+}
 
 export function textStamp(color: string, label: string): string {
   return `${TX}${color}:${label}`;
 }
 
 export function parseStamp(value: string): ParsedStamp {
+  if (value.startsWith(IX)) {
+    const [glyph = '', color = '#757575', ...rest] = value.slice(IX.length).split(':');
+    return { kind: 'combo', glyph, color, label: rest.join(':') };
+  }
   if (value.startsWith(TX)) {
     const rest = value.slice(TX.length);
     const i = rest.indexOf(':');
@@ -42,7 +53,9 @@ export function parseStamp(value: string): ParsedStamp {
 export function stampAsText(value: string | null | undefined): string {
   if (!value) return '';
   const s = parseStamp(value);
-  return s.kind === 'emoji' ? s.glyph : `［${s.label}］`;
+  if (s.kind === 'emoji') return s.glyph;
+  if (s.kind === 'combo') return `${s.glyph}${s.label}`;
+  return `［${s.label}］`;
 }
 
 /**
@@ -90,6 +103,11 @@ function e(list: string): StampItem[] {
     });
 }
 
+/** 絵と文字のスタンプ */
+function ix(glyph: string, color: string, label: string): StampItem {
+  return { value: comboStamp(glyph, color, label), label };
+}
+
 /** 文字のスタンプ：同じ色でまとめて作る */
 function t(color: string, labels: string): StampItem[] {
   return labels
@@ -103,6 +121,8 @@ export const STAMP_CATEGORIES: StampCategory[] = [
     id: 'event',
     name: 'イベント',
     items: [
+      ix('🍻', C.navy, '忘年会'),
+      ix('🎍', C.red, '新年会'),
       ...e(`🎂 誕生日、🎉 パーティー、🎁 プレゼント、💐 花束、🍻 飲み会、🍽️ 食事、❤️ デート、💍 記念日、
         🎤 カラオケ、🎬 映画、🎵 ライブ、🎭 観劇、🎡 遊園地、🎢 ジェットコースター、♨️ 温泉、🏨 ホテル、
         ✈️ 旅行、🧳 旅行の準備、📸 写真、🎮 ゲーム、🛍️ 買い物、☕ カフェ、🍖 BBQ、🎆 花火`),
@@ -115,7 +135,7 @@ export const STAMP_CATEGORIES: StampCategory[] = [
     id: 'work',
     name: 'しごと',
     items: [
-      ...t(C.blue, '出勤 仕事 バイト 会議 出張 研修 面接 打合せ 外出 来客'),
+      ...t(C.blue, '出勤 仕事 バイト ギグル 会議 出張 研修 面接 打合せ 外出 来客'),
       ...t(C.navy, '早番 中番 遅番 日勤 夜勤 夜勤明け 当直 当番 残業'),
       ...t(C.green, '休み 有休 半休 午前休 午後休 代休 振休 在宅 リモート 定時'),
       ...t(C.red, '締切 提出 重要 給料日 ボーナス'),
@@ -209,6 +229,8 @@ export const STAMP_CATEGORIES: StampCategory[] = [
     id: 'season',
     name: 'きせつ',
     items: [
+      ix('🎍', C.red, '新年会'),
+      ix('🍻', C.navy, '忘年会'),
       ...e(`🎍 お正月、🧧 お年玉、👹 節分、🎎 ひなまつり、🌸 お花見、🎏 こどもの日、💐 母の日、👔 父の日、
         🎋 七夕、🎐 夏、🎆 花火、🍉 すいか、🎃 ハロウィン、🍁 紅葉、🎑 お月見、🍠 焼きいも、🎄 クリスマス、
         🎅 サンタ、⛄ 雪だるま、🍫 バレンタイン、🍬 ホワイトデー`),
@@ -275,7 +297,7 @@ export function emojiGlyphs(): string[] {
   const out = new Set<string>();
   for (const it of allStamps()) {
     const s = parseStamp(it.value);
-    if (s.kind === 'emoji') out.add(s.glyph);
+    if (s.kind === 'emoji' || s.kind === 'combo') out.add(s.glyph);
   }
   return [...out];
 }

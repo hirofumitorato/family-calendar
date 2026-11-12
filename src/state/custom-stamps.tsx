@@ -35,9 +35,14 @@ export function CustomStampsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     reload();
-    return repo.subscribe(() => {
-      reload();
-    });
+    // リアルタイム更新が使えなくても、スタンプ以外の画面は止めない
+    try {
+      return repo.subscribe(() => {
+        reload();
+      });
+    } catch {
+      return undefined;
+    }
   }, [repo, reload]);
 
   const value = useMemo<CustomStampsState>(() => {

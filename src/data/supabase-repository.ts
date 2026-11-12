@@ -16,6 +16,8 @@ import type {
   WeatherHourly,
 } from '@/lib/types';
 
+let channelSeq = 0;
+
 function check<T>(res: { data: unknown; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
   return res.data as T;
@@ -322,8 +324,9 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
         if (weatherTimer) clearTimeout(weatherTimer);
         weatherTimer = setTimeout(onChange, 1000);
       };
+      // 同じ名前のチャンネルを2つ開くとエラーになる（画面ごとに subscribe するので、毎回別の名前にする）
       const channel = sb
-        .channel('calendar-changes')
+        .channel(`calendar-changes-${++channelSeq}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'day_stickers' }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'day_colors' }, onChange)

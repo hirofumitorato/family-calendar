@@ -1,8 +1,8 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { useAppUpdates } from '@/hooks/use-app-updates';
 import { AppProvider, useApp } from '@/state/app-store';
@@ -77,5 +77,23 @@ export default function RootLayout() {
     <ThemePreferenceProvider>
       <ThemedRoot />
     </ThemePreferenceProvider>
+  );
+}
+
+/**
+ * 画面の表示中にエラーが起きたとき、真っ白にせずに知らせる（Expo Router が使う）。
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12, backgroundColor: '#FFF4EA' }}>
+      <Text style={{ fontSize: 18, fontWeight: '700', color: '#2A2420' }}>エラーが起きました</Text>
+      <Text style={{ fontSize: 13, color: '#7A6E66', textAlign: 'center' }}>{error.message}</Text>
+      <Pressable
+        onPress={retry}
+        accessibilityRole="button"
+        style={{ marginTop: 8, backgroundColor: '#E8641B', borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 }}>
+        <Text style={{ color: '#fff', fontWeight: '700' }}>もう一度</Text>
+      </Pressable>
+    </View>
   );
 }

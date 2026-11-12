@@ -6,6 +6,7 @@ import type {
   EventTemplate,
   Family,
   FamilyMember,
+  CustomStamp,
   Genre,
   NewCalendarEvent,
   NewEventTemplate,
@@ -71,6 +72,12 @@ export interface CalendarRepository {
   deleteTemplate(id: string): Promise<void>;
 
   /** テンプレートのジャンル。名前を変えるとテンプレートのジャンルも変わり、削除するとテンプレートは未分類になる */
+  /** オリジナルスタンプ（家族が追加した画像） */
+  listCustomStamps(familyId: string): Promise<CustomStamp[]>;
+  createCustomStamp(familyId: string, name: string, imageData: string): Promise<CustomStamp>;
+  renameCustomStamp(stamp: CustomStamp, name: string): Promise<void>;
+  deleteCustomStamp(stamp: CustomStamp): Promise<void>;
+
   listGenres(familyId: string): Promise<Genre[]>;
   createGenre(familyId: string, name: string): Promise<Genre>;
   renameGenre(genre: Genre, name: string): Promise<void>;

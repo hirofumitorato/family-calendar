@@ -133,6 +133,16 @@ export type Person = {
 export type PersonInput = { name: string; color: string };
 
 /** テンプレートのジャンル */
+/** オリジナルスタンプ（家族が追加した画像）。予定には 'img:<id>' で保存する */
+export type CustomStamp = {
+  id: string;
+  family_id: string;
+  name: string;
+  /** 'data:image/png;base64,...'（160px 前後に縮めたもの） */
+  image_data: string;
+  sort_order: number;
+};
+
 export type Genre = {
   id: string;
   family_id: string;

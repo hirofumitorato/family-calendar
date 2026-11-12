@@ -6,6 +6,7 @@ import type {
   DayColor,
   DaySticker,
   EventTemplate,
+  CustomStamp,
   Genre,
   NewCalendarEvent,
   Person,
@@ -135,6 +136,7 @@ export function createDemoRepository(): CalendarRepository {
     tpl('t5', '病院', '歯医者', '🦷', [ME], '15:00', '16:00', null, { remind_minutes_before: [60] }),
     tpl('t6', '仕事', '在宅勤務', '💻', [PARTNER], null, null, 'FREQ=WEEKLY;BYDAY=FR'),
   ];
+  let customStamps: CustomStamp[] = [];
   let genres: Genre[] = ['家事', '習い事', '病院', '仕事'].map((name, i) => ({
     id: `g${i + 1}`,
     family_id: FAMILY_ID,
@@ -262,6 +264,30 @@ export function createDemoRepository(): CalendarRepository {
     },
     async deleteTemplate(id) {
       templates = templates.filter((t) => t.id !== id);
+    },
+
+    async listCustomStamps() {
+      return [...customStamps].sort((a, b) => a.sort_order - b.sort_order);
+    },
+    async createCustomStamp(familyId, name, imageData) {
+      const created: CustomStamp = {
+        id: `cs${seq++}`,
+        family_id: familyId,
+        name,
+        image_data: imageData,
+        sort_order: Math.max(-1, ...customStamps.map((c) => c.sort_order)) + 1,
+      };
+      customStamps = [...customStamps, created];
+      notify();
+      return created;
+    },
+    async renameCustomStamp(stamp, name) {
+      customStamps = customStamps.map((c) => (c.id === stamp.id ? { ...c, name } : c));
+      notify();
+    },
+    async deleteCustomStamp(stamp) {
+      customStamps = customStamps.filter((c) => c.id !== stamp.id);
+      notify();
     },
 
     async listGenres() {

@@ -11,17 +11,20 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CustomStampEditor } from '@/components/custom-stamp-editor';
 import { Stamp } from '@/components/stamp';
 import { useRecentStamps } from '@/hooks/use-recent-stamps';
 import { useTheme } from '@/hooks/use-theme';
-import { STAMP_CATEGORIES, allStamps, searchStamps, type StampItem } from '@/lib/stamp-catalog';
+import { STAMP_CATEGORIES, allStamps, imageStamp, searchStamps, type StampItem } from '@/lib/stamp-catalog';
+import { useCustomStamps } from '@/state/custom-stamps';
 
 const RECENT = '__recent__';
+const ORIGINAL = '__original__';
 
 /**
  * スタンプ（予定のアイコン）を選ぶ画面。
  * 検索欄があるので、キーボードに隠れないよう画面の上から出す。
- * カテゴリのタブ・検索・最近使ったもの。
+ * カテゴリのタブ（先頭は家族が追加した画像の「オリジナル」）・検索・最近使ったもの。
  */
 export function StampPicker({
   visible,
@@ -43,13 +46,16 @@ export function StampPicker({
   const { recent, remember } = useRecentStamps();
   const [tab, setTab] = useState<string>(RECENT);
   const [query, setQuery] = useState('');
+  const [adding, setAdding] = useState(false);
   const gridRef = useRef<ScrollViewInstance>(null);
+  const custom = useCustomStamps();
+  const originals: StampItem[] = custom.stamps.map((c) => ({ value: imageStamp(c.id), label: c.name }));
 
   // 開くたびに：最近使ったものがあればそこから、なければ最初のカテゴリから
   useEffect(() => {
     if (!visible) return;
     setQuery('');
-    setTab(recent.length ? RECENT : STAMP_CATEGORIES[0].id);
+    setTab(recent.length ? RECENT : originals.length ? ORIGINAL : STAMP_CATEGORIES[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
@@ -57,13 +63,20 @@ export function StampPicker({
     gridRef.current?.scrollTo({ y: 0, animated: false });
   }, [tab, query]);
 
-  const labelOf = useMemo(() => new Map(allStamps().map((s) => [s.value, s.label])), []);
+  const labelOf = useMemo(() => {
+    const m = new Map(allStamps().map((s) => [s.value, s.label]));
+    for (const o of originals) m.set(o.value, o.label);
+    return m;
+  }, [originals]);
 
-  const items: StampItem[] = query.trim()
-    ? searchStamps(query)
+  const q = query.trim().toLowerCase();
+  const items: StampItem[] = q
+    ? [...originals.filter((o) => o.label.toLowerCase().includes(q)), ...searchStamps(query)]
     : tab === RECENT
       ? recent.map((v) => ({ value: v, label: labelOf.get(v) ?? '' }))
-      : (STAMP_CATEGORIES.find((c) => c.id === tab)?.items ?? []);
+      : tab === ORIGINAL
+        ? originals
+        : (STAMP_CATEGORIES.find((c) => c.id === tab)?.items ?? []);
 
   const pick = (v: string) => {
     remember(v);
@@ -98,7 +111,7 @@ export function StampPicker({
 
         {!query.trim() && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={styles.tabsInner}>
-            {[{ id: RECENT, name: '🕘 最近' }, ...STAMP_CATEGORIES].map((c) => {
+            {[{ id: ORIGINAL, name: '⭐ オリジナル' }, { id: RECENT, name: '🕘 最近' }, ...STAMP_CATEGORIES].map((c) => {
               const active = c.id === tab;
               return (
                 <Pressable
@@ -118,7 +131,7 @@ export function StampPicker({
         )}
 
         <ScrollView ref={gridRef} style={{ flex: 1 }} contentContainerStyle={styles.grid} keyboardShouldPersistTaps="handled">
-          {items.length === 0 && (
+          {items.length === 0 && tab !== ORIGINAL && (
             <Text style={[styles.empty, { color: t.textMuted }]}>
               {query.trim() ? '見つかりませんでした' : 'まだありません。使ったスタンプがここに並びます'}
             </Text>
@@ -142,9 +155,31 @@ export function StampPicker({
               </Pressable>
             );
           })}
+          {/* オリジナル：会社・お店のマークや家族の写真を追加 */}
+          {tab === ORIGINAL && !q && (
+            <>
+              <Pressable
+                onPress={() => setAdding(true)}
+                accessibilityLabel="オリジナルスタンプを追加"
+                style={[styles.cell, styles.addCell, { borderColor: t.accent }]}>
+                <Text style={{ color: t.accent, fontSize: 22, fontWeight: '600' }}>＋</Text>
+                <Text style={[styles.cellLabel, { color: t.accent }]}>追加</Text>
+              </Pressable>
+              {originals.length === 0 && (
+                <Text style={[styles.empty, { color: t.textMuted }]}>
+                  会社・お店のマークや家族の写真を、スタンプにできます
+                </Text>
+              )}
+            </>
+          )}
         </ScrollView>
       </View>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="閉じる" />
+      <CustomStampEditor
+        visible={adding}
+        onClose={() => setAdding(false)}
+        onSaved={(created) => pick(imageStamp(created.id))}
+      />
     </Modal>
   );
 }
@@ -175,5 +210,6 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   cellLabel: { fontSize: 9 },
+  addCell: { backgroundColor: 'transparent', borderWidth: 1.5, borderStyle: 'dashed' },
   empty: { paddingVertical: 32, textAlign: 'center', width: '100%' },
 });

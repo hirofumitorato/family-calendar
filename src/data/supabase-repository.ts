@@ -9,6 +9,7 @@ import type {
   EventTemplate,
   Family,
   FamilyMember,
+  CustomStamp,
   Genre,
   Person,
   WeatherDaily,
@@ -195,6 +196,38 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
       check(await sb.from('event_templates').delete().eq('id', id));
     },
 
+    async listCustomStamps(familyId) {
+      return check<CustomStamp[]>(
+        await sb
+          .from('custom_stamps')
+          .select('id, family_id, name, image_data, sort_order')
+          .eq('family_id', familyId)
+          .order('sort_order')
+          .order('created_at'),
+      );
+    },
+    async createCustomStamp(familyId, name, imageData) {
+      const { data: last } = await sb
+        .from('custom_stamps')
+        .select('sort_order')
+        .eq('family_id', familyId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      return check<CustomStamp>(
+        await sb
+          .from('custom_stamps')
+          .insert({ family_id: familyId, name, image_data: imageData, sort_order: (last?.[0]?.sort_order ?? -1) + 1 })
+          .select('id, family_id, name, image_data, sort_order')
+          .single(),
+      );
+    },
+    async renameCustomStamp(stamp, name) {
+      check(await sb.from('custom_stamps').update({ name }).eq('id', stamp.id));
+    },
+    async deleteCustomStamp(stamp) {
+      check(await sb.from('custom_stamps').delete().eq('id', stamp.id));
+    },
+
     async listGenres(familyId) {
       return check<Genre[]>(
         await sb.from('template_genres').select('*').eq('family_id', familyId).order('sort_order').order('created_at'),
@@ -294,6 +327,7 @@ export function createSupabaseRepository(sb: SupabaseClient): CalendarRepository
         .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'day_stickers' }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'day_colors' }, onChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'custom_stamps' }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'weather_daily' }, onWeather)
         .subscribe();
       return () => {

@@ -71,3 +71,12 @@ test('背景色つきの文字スタンプ（黒地に赤文字）', () => {
   assert.deepEqual(parseStamp('tx:#E53935/#111111:別班'), { kind: 'text', color: '#E53935', bg: '#111111', label: '別班' });
   assert.ok(searchStamps('別班').length === 1);
 });
+
+test('オリジナル（画像）スタンプと正方形の切り抜き', async () => {
+  const { imageStamp, squareCrop } = await import('../src/lib/stamp-catalog.ts');
+  assert.equal(imageStamp('abc'), 'img:abc');
+  assert.deepEqual(parseStamp('img:abc'), { kind: 'image', id: 'abc' });
+  assert.equal(stampAsText('img:abc'), '🖼️');
+  assert.deepEqual(squareCrop(1170, 874), { sx: 148, sy: 0, side: 874 });
+  assert.deepEqual(squareCrop(300, 500), { sx: 0, sy: 100, side: 300 });
+});

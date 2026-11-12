@@ -2,15 +2,36 @@ import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'r
 
 import { STAMP_IMAGES } from '@/constants/stamp-images';
 import { parseStamp, textStampLayout } from '@/lib/stamp-catalog';
+import { useCustomStamps } from '@/state/custom-stamps';
 
 /**
  * スタンプ（予定のアイコン・日付のスタンプ）を1つ描く。
  * - 絵のスタンプ：Fluent Emoji の画像。画像がない絵文字は文字のまま表示。
  * - 文字のスタンプ：色付きの枠に文字（小さいときは1文字目だけ）。
  * - 絵と文字のスタンプ：白地の枠の上に絵、下に文字（小さいときは絵だけ）。
+ * - オリジナル：家族が追加した画像（角を少し丸める）。消された画像は 🖼️ で代わりに表示。
  */
 export function Stamp({ value, size = 24, style }: { value: string; size?: number; style?: StyleProp<ViewStyle> }) {
   const s = parseStamp(value);
+  const custom = useCustomStamps();
+  if (s.kind === 'image') {
+    const stamp = custom.byId(s.id);
+    if (stamp) {
+      return (
+        <Image
+          source={{ uri: stamp.image_data }}
+          style={[{ width: size, height: size, borderRadius: size * 0.18 }, style as object]}
+          resizeMode="cover"
+          accessibilityLabel={stamp.name}
+        />
+      );
+    }
+    return (
+      <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
+        <Text style={{ fontSize: size * 0.7, lineHeight: size }}>🖼️</Text>
+      </View>
+    );
+  }
   if (s.kind === 'emoji') {
     const src = STAMP_IMAGES[s.glyph.replace(/️/g, '')];
     if (src) {

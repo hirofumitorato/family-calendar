@@ -7,6 +7,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { useAppUpdates } from '@/hooks/use-app-updates';
 import { AppProvider, useApp } from '@/state/app-store';
 import { CalendarPrefsProvider } from '@/state/calendar-prefs';
+import { CustomStampsProvider } from '@/state/custom-stamps';
 import { ThemePreferenceProvider, useThemePreference } from '@/state/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -62,7 +63,9 @@ function ThemedRoot() {
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <AppProvider>
         <CalendarPrefsProvider>
-          <RootStack />
+          <CustomStampsProvider>
+            <RootStack />
+          </CustomStampsProvider>
         </CalendarPrefsProvider>
       </AppProvider>
     </ThemeProvider>

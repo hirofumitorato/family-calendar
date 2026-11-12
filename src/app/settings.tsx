@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { CustomStampEditor } from '@/components/custom-stamp-editor';
 import { KaiunSheet } from '@/components/kaiun-sheet';
 import { PeopleSheet } from '@/components/people-sheet';
+import { Stamp } from '@/components/stamp';
+import { imageStamp } from '@/lib/stamp-catalog';
+import type { CustomStamp } from '@/lib/types';
 import { useTheme } from '@/hooks/use-theme';
 import { useApp } from '@/state/app-store';
 import { useCalendarPrefs } from '@/state/calendar-prefs';
+import { useCustomStamps } from '@/state/custom-stamps';
 import { useThemePreference } from '@/state/theme';
 import { currentVersionLabel, fetchNewUpdate, restartToApply, updatesSupported } from '@/utils/app-updates';
 import { confirm, notify } from '@/utils/dialog';
@@ -30,6 +35,9 @@ export default function SettingsScreen() {
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [kaiunOpen, setKaiunOpen] = useState(false);
   const [checking, setChecking] = useState(false);
+  // オリジナルスタンプの追加（'new'）・編集（そのスタンプ）
+  const [stampEdit, setStampEdit] = useState<CustomStamp | 'new' | null>(null);
+  const custom = useCustomStamps();
   const prefs = useCalendarPrefs();
   if (!ctx) return null;
   const kaiunPerson = prefs.kaiun ? ctx.people.find((p) => p.id === prefs.kaiun?.personId) : null;
@@ -98,6 +106,32 @@ export default function SettingsScreen() {
             </Text>
           </View>
           <Text style={{ color: t.accent, fontWeight: '600' }}>{prefs.kaiun ? '変更 ›' : '設定 ›'}</Text>
+        </Pressable>
+      </View>
+
+      <Text style={title}>オリジナルスタンプ（家族だけが見られます）</Text>
+      <View style={section}>
+        <View style={styles.stampGrid}>
+          {custom.stamps.map((c) => (
+            <Pressable
+              key={c.id}
+              onPress={() => setStampEdit(c)}
+              accessibilityLabel={`オリジナルスタンプ ${c.name} を編集`}
+              style={styles.stampItem}>
+              <Stamp value={imageStamp(c.id)} size={44} />
+              <Text style={{ color: t.textSecondary, fontSize: 11 }} numberOfLines={1}>
+                {c.name}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {custom.stamps.length === 0 && (
+          <Text style={[styles.note, { color: t.textSecondary }]}>
+            会社・お店のマークや家族の写真を、予定のスタンプにできます
+          </Text>
+        )}
+        <Pressable onPress={() => setStampEdit('new')} accessibilityLabel="画像を追加" style={{ marginTop: 8 }}>
+          <Text style={{ color: t.accent, fontWeight: '600' }}>＋ 画像を追加</Text>
         </Pressable>
       </View>
 
@@ -193,11 +227,18 @@ export default function SettingsScreen() {
       )}
       <PeopleSheet visible={peopleOpen} onClose={() => setPeopleOpen(false)} />
       <KaiunSheet visible={kaiunOpen} onClose={() => setKaiunOpen(false)} />
+      <CustomStampEditor
+        visible={stampEdit !== null}
+        editing={stampEdit === 'new' ? null : stampEdit}
+        onClose={() => setStampEdit(null)}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  stampGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  stampItem: { width: 56, alignItems: 'center', gap: 4 },
   root: { padding: 16, gap: 8, paddingBottom: 48 },
   section: { borderRadius: 12, padding: 14 },
   sectionTitle: { fontSize: 12, marginTop: 12 },

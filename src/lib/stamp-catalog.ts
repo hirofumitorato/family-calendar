@@ -5,6 +5,7 @@
 //   以前の絵文字アイコンもそのまま表示できる。
 // - 文字のスタンプ：'tx:<色>:<文字>'（例 'tx:#1E88E5:早番'）。色付きの枠に文字を描く（オリジナルデザイン）。
 //   背景も塗るときは '<文字の色>/<背景の色>'（例 'tx:#E53935/#111111:別班' ＝黒地に赤文字）。
+// - オリジナル（家族が追加した画像）：'img:<custom_stamps の id>'。
 // - 絵と文字のスタンプ：'ix:<絵文字>:<色>:<文字>'（例 'ix:🍻:#E53935:忘年会'）。上に絵、下に文字。
 
 export type StampItem = {
@@ -23,10 +24,16 @@ export type StampCategory = {
 export type ParsedStamp =
   | { kind: 'emoji'; glyph: string }
   | { kind: 'text'; color: string; label: string; bg?: string }
-  | { kind: 'combo'; glyph: string; color: string; label: string };
+  | { kind: 'combo'; glyph: string; color: string; label: string }
+  | { kind: 'image'; id: string };
 
 const TX = 'tx:';
 const IX = 'ix:';
+const IMG = 'img:';
+
+export function imageStamp(id: string): string {
+  return `${IMG}${id}`;
+}
 
 export function comboStamp(glyph: string, color: string, label: string): string {
   return `${IX}${glyph}:${color}:${label}`;
@@ -37,6 +44,7 @@ export function textStamp(color: string, label: string): string {
 }
 
 export function parseStamp(value: string): ParsedStamp {
+  if (value.startsWith(IMG)) return { kind: 'image', id: value.slice(IMG.length) };
   if (value.startsWith(IX)) {
     const [glyph = '', color = '#757575', ...rest] = value.slice(IX.length).split(':');
     return { kind: 'combo', glyph, color, label: rest.join(':') };
@@ -61,6 +69,7 @@ export function stampAsText(value: string | null | undefined): string {
   const s = parseStamp(value);
   if (s.kind === 'emoji') return s.glyph;
   if (s.kind === 'combo') return `${s.glyph}${s.label}`;
+  if (s.kind === 'image') return '🖼️';
   return `［${s.label}］`;
 }
 
@@ -307,4 +316,13 @@ export function emojiGlyphs(): string[] {
     if (s.kind === 'emoji' || s.kind === 'combo') out.add(s.glyph);
   }
   return [...out];
+}
+
+/**
+ * 画像を正方形のスタンプにするときの切り抜き（中央を正方形に）。
+ * 元の幅・高さ → 元画像から切り出す範囲。
+ */
+export function squareCrop(width: number, height: number): { sx: number; sy: number; side: number } {
+  const side = Math.min(width, height);
+  return { sx: Math.round((width - side) / 2), sy: Math.round((height - side) / 2), side };
 }
